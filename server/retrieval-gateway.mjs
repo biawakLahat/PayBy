@@ -31,9 +31,22 @@ await loadDotEnv();
 const port = Number(process.env.PAYBY_GATEWAY_PORT || 8787);
 const secret = process.env.PAYBY_GATEWAY_SECRET || "payby-local-dev-secret";
 const adminToken = process.env.PAYBY_GATEWAY_ADMIN_TOKEN || "";
+const allowedOrigins = String(process.env.PAYBY_GATEWAY_ALLOWED_ORIGINS || "*")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const maxBodyBytes = Number(process.env.PAYBY_GATEWAY_MAX_BODY_BYTES || 128_000);
+const maxMetadataItems = Number(process.env.PAYBY_GATEWAY_MAX_METADATA_ITEMS || 20);
+const sessionRateLimitWindowMs = Number(
+  process.env.PAYBY_GATEWAY_RATE_LIMIT_WINDOW_MS || 60_000,
+);
+const sessionRateLimitMax = Number(
+  process.env.PAYBY_GATEWAY_RATE_LIMIT_MAX || 30,
+);
 const allowClientPolicy = process.env.PAYBY_GATEWAY_ALLOW_CLIENT_POLICY === "true";
 const skipSignatureVerify =
   process.env.PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY === "true";
+const sessionRateBuckets = new Map();
 
 const networks = {
   shelbynet: "https://api.shelbynet.shelby.xyz/shelby",
@@ -73,24 +86,58 @@ const marketplaceContracts = {
     "",
 };
 
-function json(res, status, body) {
-  res.writeHead(status, {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+function getRequestOrigin(req) {
+  return String(req.headers.origin || "");
+}
+
+function getCorsOrigin(req) {
+  const origin = getRequestOrigin(req);
+  if (allowedOrigins.includes("*")) return "*";
+  if (origin && allowedOrigins.includes(origin)) return origin;
+  return allowedOrigins[0] || "null";
+}
+
+function isOriginAllowed(req) {
+  const origin = getRequestOrigin(req);
+  return !origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin);
+}
+
+function corsHeaders(req) {
+  return {
+    "access-control-allow-origin": getCorsOrigin(req),
+    "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
     "access-control-allow-headers": "content-type,x-admin-token",
+    "vary": "origin",
+  };
+}
+
+function json(req, res, status, body) {
+  res.writeHead(status, {
+    ...corsHeaders(req),
     "content-type": "application/json",
+    "x-content-type-options": "nosniff",
   });
   res.end(JSON.stringify(body));
 }
 
-function notFound(res) {
-  json(res, 404, { error: "Not found" });
+function notFound(req, res) {
+  json(req, res, 404, { error: "Not found" });
 }
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (chunk) => chunks.push(chunk));
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBodyBytes) {
+        const error = new Error("Request body is too large.");
+        error.status = 413;
+        req.destroy(error);
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", () => {
       try {
         const raw = Buffer.concat(chunks).toString("utf8");
@@ -101,6 +148,111 @@ function readBody(req) {
     });
     req.on("error", reject);
   });
+}
+
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "")
+    .split(",")[0]
+    .trim();
+}
+
+function assertSessionRateLimit(req) {
+  const key = clientIp(req) || "unknown";
+  const now = Date.now();
+  const bucket = sessionRateBuckets.get(key);
+
+  if (!bucket || now - bucket.startedAt > sessionRateLimitWindowMs) {
+    sessionRateBuckets.set(key, { startedAt: now, count: 1 });
+    return;
+  }
+
+  bucket.count += 1;
+  if (bucket.count > sessionRateLimitMax) {
+    const error = new Error("Too many access requests. Try again shortly.");
+    error.status = 429;
+    throw error;
+  }
+}
+
+function cleanRateLimitBuckets() {
+  const cutoff = Date.now() - sessionRateLimitWindowMs * 2;
+  for (const [key, bucket] of sessionRateBuckets.entries()) {
+    if (bucket.startedAt < cutoff) sessionRateBuckets.delete(key);
+  }
+}
+
+function isValidAddress(value) {
+  return /^0x[a-fA-F0-9]{1,64}$/.test(String(value || ""));
+}
+
+function isValidNetwork(value) {
+  return value === "shelbynet" || value === "shelby-testnet";
+}
+
+function assertSafeBlobName(blobName) {
+  const value = String(blobName || "");
+  if (
+    !value ||
+    value.length > 240 ||
+    value.includes("..") ||
+    value.includes("\\") ||
+    value.startsWith("/")
+  ) {
+    const error = new Error("Invalid blob name.");
+    error.status = 400;
+    throw error;
+  }
+}
+
+function clampString(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function sanitizeMetadataItem(item) {
+  const network = String(item?.network || "");
+  const owner = String(item?.owner || "");
+  const blobName = String(item?.blobName || "");
+
+  if (!isValidNetwork(network) || !isValidAddress(owner)) {
+    const error = new Error("Invalid metadata network or owner.");
+    error.status = 400;
+    throw error;
+  }
+  assertSafeBlobName(blobName);
+
+  const accessMode = ["free", "allowlist", "nft", "paid", "subscription"].includes(
+    item?.accessMode,
+  )
+    ? item.accessMode
+    : "free";
+  const visibility = ["public", "unlisted", "private"].includes(item?.visibility)
+    ? item.visibility
+    : "unlisted";
+  const currency = item?.currency === "SHELBYUSD" ? "SHELBYUSD" : "APT";
+  const tags = Array.isArray(item?.tags)
+    ? item.tags.map((tag) => clampString(tag, 32)).filter(Boolean).slice(0, 12)
+    : [];
+
+  return {
+    key: metadataKey({ network, owner, blobName }),
+    owner,
+    blobName,
+    network,
+    title: clampString(item?.title || blobName, 120),
+    description: clampString(item?.description, 1_000),
+    category: clampString(item?.category || "Premium media", 80),
+    tags,
+    coverUrl: clampString(item?.coverUrl, 500),
+    visibility,
+    accessMode,
+    price: clampString(item?.price, 40),
+    currency,
+    allowlist: clampString(item?.allowlist, 4_000),
+    createdAt:
+      typeof item?.createdAt === "number" && Number.isFinite(item.createdAt)
+        ? item.createdAt
+        : Date.now(),
+  };
 }
 
 function base64url(value) {
@@ -372,6 +524,12 @@ function parseMetadataPath(pathname) {
 }
 
 async function handleSession(req, res) {
+  try {
+    assertSessionRateLimit(req);
+  } catch (error) {
+    return json(req, res, error.status || 429, { error: error.message });
+  }
+
   const body = await readBody(req);
   const {
     address,
@@ -386,7 +544,17 @@ async function handleSession(req, res) {
   } = body;
 
   if (!address || !network || !owner || !blobName || !nonce || !message) {
-    return json(res, 400, { error: "Missing access session fields." });
+    return json(req, res, 400, { error: "Missing access session fields." });
+  }
+
+  if (!isValidNetwork(network) || !isValidAddress(address) || !isValidAddress(owner)) {
+    return json(req, res, 400, { error: "Invalid network or wallet address." });
+  }
+
+  try {
+    assertSafeBlobName(blobName);
+  } catch (error) {
+    return json(req, res, error.status || 400, { error: error.message });
   }
 
   const policies = await readPolicies();
@@ -397,7 +565,7 @@ async function handleSession(req, res) {
     verifyMessage({ address, publicKey, signedMessage, message, nonce });
     await assertPolicyAccess({ policy, address, network, blobName });
   } catch (error) {
-    return json(res, error.status || 401, { error: error.message });
+    return json(req, res, error.status || 401, { error: error.message });
   }
 
   const token = signToken({
@@ -409,33 +577,47 @@ async function handleSession(req, res) {
     exp: Date.now() + 10 * 60 * 1000,
   });
 
-  return json(res, 200, { token, expiresInSeconds: 600 });
+  return json(req, res, 200, { token, expiresInSeconds: 600 });
 }
 
 async function handlePolicy(req, res, descriptor) {
+  if (
+    !isValidNetwork(descriptor.network) ||
+    !isValidAddress(descriptor.owner)
+  ) {
+    return json(req, res, 400, { error: "Invalid policy path." });
+  }
+  try {
+    assertSafeBlobName(descriptor.blobName);
+  } catch (error) {
+    return json(req, res, error.status || 400, { error: error.message });
+  }
+
   const policies = await readPolicies();
   const key = policyKey(descriptor);
 
   if (req.method === "GET") {
-    return json(res, 200, { policy: policies[key] || null });
+    return json(req, res, 200, { policy: policies[key] || null });
   }
 
-  if (req.method !== "PUT") return notFound(res);
+  if (req.method !== "PUT") return notFound(req, res);
 
   if (!adminToken || req.headers["x-admin-token"] !== adminToken) {
-    return json(res, 401, { error: "Admin token required." });
+    return json(req, res, 401, { error: "Admin token required." });
   }
 
   const body = await readBody(req);
   policies[key] = {
-    mode: body.mode || "free",
-    allowlist: normalizeAllowlist(body.allowlist),
-    price: body.price || "",
-    currency: body.currency || "APT",
+    mode: ["free", "allowlist", "nft", "paid", "subscription"].includes(body.mode)
+      ? body.mode
+      : "free",
+    allowlist: normalizeAllowlist(body.allowlist).filter(isValidAddress).slice(0, 500),
+    price: clampString(body.price, 40),
+    currency: body.currency === "SHELBYUSD" ? "SHELBYUSD" : "APT",
     updatedAt: new Date().toISOString(),
   };
   await writePolicies(policies);
-  return json(res, 200, { policy: policies[key] });
+  return json(req, res, 200, { policy: policies[key] });
 }
 
 async function handleMetadata(req, res, descriptor, url) {
@@ -443,7 +625,18 @@ async function handleMetadata(req, res, descriptor, url) {
 
   if (req.method === "GET") {
     if (descriptor?.network && descriptor?.owner && descriptor?.blobName) {
-      return json(res, 200, {
+      if (
+        !isValidNetwork(descriptor.network) ||
+        !isValidAddress(descriptor.owner)
+      ) {
+        return json(req, res, 400, { error: "Invalid metadata path." });
+      }
+      try {
+        assertSafeBlobName(descriptor.blobName);
+      } catch (error) {
+        return json(req, res, error.status || 400, { error: error.message });
+      }
+      return json(req, res, 200, {
         metadata:
           registry[
             metadataKey({
@@ -465,30 +658,37 @@ async function handleMetadata(req, res, descriptor, url) {
       return true;
     });
 
-    return json(res, 200, { metadata: items });
+    return json(req, res, 200, { metadata: items.slice(0, 500) });
   }
 
   if (req.method === "POST" && !descriptor?.network) {
     const body = await readBody(req);
     const items = Array.isArray(body.items) ? body.items : [];
+    if (items.length > maxMetadataItems) {
+      return json(req, res, 413, {
+        error: `Metadata batch is too large. Max ${maxMetadataItems} items.`,
+      });
+    }
     const now = new Date().toISOString();
+    let saved = 0;
 
     for (const item of items) {
-      if (!item.network || !item.owner || !item.blobName) continue;
-      const key = metadataKey({
-        network: item.network,
-        owner: item.owner,
-        blobName: item.blobName,
-      });
+      let sanitized;
+      try {
+        sanitized = sanitizeMetadataItem(item);
+      } catch (error) {
+        return json(req, res, error.status || 400, { error: error.message });
+      }
+      const key = sanitized.key;
       registry[key] = {
-        ...item,
-        key,
+        ...sanitized,
         updatedAt: now,
       };
+      saved += 1;
     }
 
     await writeMetadataRegistry(registry);
-    return json(res, 200, { saved: items.length });
+    return json(req, res, 200, { saved });
   }
 
   if (
@@ -497,6 +697,17 @@ async function handleMetadata(req, res, descriptor, url) {
     descriptor?.owner &&
     descriptor?.blobName
   ) {
+    if (
+      !isValidNetwork(descriptor.network) ||
+      !isValidAddress(descriptor.owner)
+    ) {
+      return json(req, res, 400, { error: "Invalid metadata path." });
+    }
+    try {
+      assertSafeBlobName(descriptor.blobName);
+    } catch (error) {
+      return json(req, res, error.status || 400, { error: error.message });
+    }
     delete registry[
       metadataKey({
         network: descriptor.network,
@@ -505,21 +716,21 @@ async function handleMetadata(req, res, descriptor, url) {
       })
     ];
     await writeMetadataRegistry(registry);
-    return json(res, 200, { deleted: true });
+    return json(req, res, 200, { deleted: true });
   }
 
-  return notFound(res);
+  return notFound(req, res);
 }
 
 async function handleMedia(req, res, descriptor, url) {
   const token = url.searchParams.get("token");
-  if (!token) return json(res, 401, { error: "Access token required." });
+  if (!token) return json(req, res, 401, { error: "Access token required." });
 
   let payload;
   try {
     payload = verifyToken(token);
   } catch (error) {
-    return json(res, 401, { error: error.message });
+    return json(req, res, 401, { error: error.message });
   }
 
   if (
@@ -527,11 +738,21 @@ async function handleMedia(req, res, descriptor, url) {
     payload.owner.toLowerCase() !== descriptor.owner.toLowerCase() ||
     payload.blobName !== descriptor.blobName
   ) {
-    return json(res, 403, { error: "Token does not match this media." });
+    return json(req, res, 403, { error: "Token does not match this media." });
   }
 
   const baseUrl = networks[descriptor.network];
-  if (!baseUrl) return json(res, 400, { error: "Unsupported network." });
+  if (!baseUrl) return json(req, res, 400, { error: "Unsupported network." });
+
+  if (!isValidAddress(descriptor.owner)) {
+    return json(req, res, 400, { error: "Invalid owner address." });
+  }
+
+  try {
+    assertSafeBlobName(descriptor.blobName);
+  } catch (error) {
+    return json(req, res, error.status || 400, { error: error.message });
+  }
 
   const upstreamUrl = `${baseUrl}/v1/blobs/${encodeURIComponent(
     descriptor.owner,
@@ -539,15 +760,16 @@ async function handleMedia(req, res, descriptor, url) {
   const upstream = await fetch(upstreamUrl);
 
   if (!upstream.ok || !upstream.body) {
-    return json(res, upstream.status, {
+    return json(req, res, upstream.status, {
       error: `Shelby retrieval failed with ${upstream.status}.`,
     });
   }
 
   res.writeHead(200, {
-    "access-control-allow-origin": "*",
+    ...corsHeaders(req),
     "content-type": upstream.headers.get("content-type") || "application/octet-stream",
     "cache-control": "private, max-age=60",
+    "x-content-type-options": "nosniff",
   });
 
   const reader = upstream.body.getReader();
@@ -560,28 +782,32 @@ async function handleMedia(req, res, descriptor, url) {
 }
 
 const server = createServer(async (req, res) => {
-  res.setHeader("access-control-allow-origin", "*");
+  cleanRateLimitBuckets();
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
-      "access-control-allow-headers": "content-type,x-admin-token",
+      ...corsHeaders(req),
     });
     return res.end();
   }
 
   try {
+    if (!isOriginAllowed(req)) {
+      return json(req, res, 403, { error: "Origin is not allowed." });
+    }
+
     const url = new URL(req.url || "/", `http://${req.headers.host}`);
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return json(res, 200, {
+      return json(req, res, 200, {
         ok: true,
         policyMode: allowClientPolicy ? "client-policy-dev" : "server-policy",
         signatureVerification: skipSignatureVerify ? "skipped" : "ed25519",
         marketplaceRegistry: Object.values(marketplaceContracts).some(Boolean)
           ? "marketplace-configured"
           : "marketplace-not-configured",
+        cors: allowedOrigins.includes("*") ? "open" : "restricted",
+        metadata: "file-registry",
       });
     }
 
@@ -604,9 +830,11 @@ const server = createServer(async (req, res) => {
       return await handleMedia(req, res, mediaDescriptor, url);
     }
 
-    return notFound(res);
+    return notFound(req, res);
   } catch (error) {
-    return json(res, 500, { error: error.message || "Gateway error" });
+    return json(req, res, error.status || 500, {
+      error: error.message || "Gateway error",
+    });
   }
 });
 

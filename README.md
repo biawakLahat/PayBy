@@ -39,9 +39,13 @@ Gateway environment:
 PAYBY_GATEWAY_PORT=8787
 PAYBY_GATEWAY_SECRET=replace-with-random-secret
 PAYBY_GATEWAY_ADMIN_TOKEN=replace-with-admin-token
+PAYBY_GATEWAY_ALLOWED_ORIGINS=https://your-payby-app.example
+PAYBY_GATEWAY_MAX_BODY_BYTES=128000
+PAYBY_GATEWAY_MAX_METADATA_ITEMS=20
+PAYBY_GATEWAY_RATE_LIMIT_WINDOW_MS=60000
+PAYBY_GATEWAY_RATE_LIMIT_MAX=30
 PAYBY_GATEWAY_ALLOW_CLIENT_POLICY=false
 PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY=false
-PAYBY_MARKETPLACE_ADDRESS=
 PAYBY_TESTNET_MARKETPLACE_ADDRESS=
 PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=
 PAYBY_APTOS_TESTNET_API_KEY=
@@ -50,6 +54,8 @@ PAYBY_APTOS_SHELBYNET_API_KEY=
 
 `PAYBY_GATEWAY_ALLOW_CLIENT_POLICY=true` is only useful during development.
 Production policy should be written server-side through the policy API.
+For community use, avoid `PAYBY_GATEWAY_ALLOWED_ORIGINS=*`; set it to the
+deployed frontend origin.
 
 ## Access Registry Contract
 
@@ -117,3 +123,23 @@ contracts/
 The Vite config serves `@shelby-protocol/clay-codes/dist/clay.wasm` as
 `application/wasm` during development. Keep this in place; Shelby upload
 encoding depends on it.
+
+## Community Readiness
+
+Before inviting a wider community, run:
+
+```bash
+npm run verify
+```
+
+Minimum launch checklist:
+
+- Deploy the frontend with `VITE_PAYBY_RETRIEVAL_GATEWAY_URL` pointing to an
+  HTTPS gateway.
+- Deploy the gateway with a strong `PAYBY_GATEWAY_SECRET`, restricted
+  `PAYBY_GATEWAY_ALLOWED_ORIGINS`, and both marketplace contract addresses.
+- Test free, allowlist, and paid media on Shelby testnet and Shelbynet.
+- Confirm a second wallet can purchase and unlock a paid media link.
+- Confirm the wrong wallet is denied for allowlist media.
+- Monitor gateway logs for denied sessions, Shelby retrieval failures, and
+  Aptos view failures during the beta window.

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "gateway": "node server/retrieval-gateway.mjs",
+    "check:gateway": "node --check server/retrieval-gateway.mjs",
     "build": "tsc --noEmit && vite build",
+    "verify": "npm run check:gateway && npm run build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

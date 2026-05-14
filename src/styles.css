@@ -2815,6 +2815,41 @@ a {
   white-space: nowrap;
 }
 
+.gateway-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  border: 1px solid color-mix(in oklch, var(--danger) 24%, var(--line));
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--danger) 8%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 78%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.gateway-banner svg {
+  flex: 0 0 auto;
+  color: var(--danger);
+}
+
+.gateway-banner div {
+  display: grid;
+  gap: 3px;
+}
+
+.gateway-banner strong {
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.gateway-banner span {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.2fr);

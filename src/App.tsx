@@ -491,7 +491,11 @@ function useStoredMetadata() {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ items }),
-        }).catch(() => setSyncState("offline"));
+        })
+          .then((response) => {
+            setSyncState(response.ok ? "synced" : "offline");
+          })
+          .catch(() => setSyncState("offline"));
       }
     },
     [],
@@ -509,7 +513,11 @@ function useStoredMetadata() {
             item.owner,
           )}/${encodeBlobPath(item.blobName)}`,
           { method: "DELETE" },
-        ).catch(() => setSyncState("offline"));
+        )
+          .then((response) => {
+            setSyncState(response.ok ? "synced" : "offline");
+          })
+          .catch(() => setSyncState("offline"));
       }
       return next;
     });
@@ -1290,6 +1298,19 @@ function VaultApp({
           </div>
         </section>
 
+        {metadataStore.syncState === "offline" ? (
+          <div className="gateway-banner" role="status">
+            <AlertTriangle size={18} />
+            <div>
+              <strong>Gateway metadata sync is offline</strong>
+              <span>
+                Publishing can continue, but community share pages may rely on
+                this browser cache until the gateway is reachable again.
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         <section className="workspace-page" aria-live="polite">
           {currentView === "vault" ? (
             <VaultList
@@ -1646,6 +1667,9 @@ function UploadPanel({
   const [publishPhase, setPublishPhase] =
     React.useState<PublishPhase>("idle");
   const [transactionHash, setTransactionHash] = React.useState("");
+  const [registryRetryItems, setRegistryRetryItems] = React.useState<MediaMetadata[]>(
+    [],
+  );
   const activePublishRef = React.useRef({ pendingIds: [] as string[], hash: "" });
 
   const uploadBlobs = useUploadBlobs({
@@ -1803,6 +1827,7 @@ function UploadPanel({
             ? error.message
             : "Access registry transaction failed.";
         setPublishPhase("error");
+        setRegistryRetryItems(restrictedItems);
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
           status: "failed",
           error: message,
@@ -1818,6 +1843,7 @@ function UploadPanel({
     }
 
     setPublishPhase("success");
+    setRegistryRetryItems([]);
     pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
       status: "indexing",
       error: "",
@@ -1828,6 +1854,24 @@ function UploadPanel({
       label: "Registered access policies",
       detail: restrictedItems.map((item) => item.blobName).join(", "),
     });
+  }
+
+  async function handleRetryRegistry() {
+    if (registryRetryItems.length === 0) return;
+    if (!connected || !account) {
+      setStatusMessage("Connect the creator wallet before retrying registry.");
+      return;
+    }
+    if (!walletNetworkAligned) {
+      await requestWalletNetworkChange({
+        changeNetwork,
+        network: walletNetwork,
+        selectedNetwork,
+        setStatusMessage,
+      });
+      return;
+    }
+    await registerAccessListings(registryRetryItems);
   }
 
   async function handleUpload() {
@@ -1983,6 +2027,7 @@ function UploadPanel({
               setFiles(Array.from(event.target.files ?? []));
               setPublishPhase("idle");
               setTransactionHash("");
+              setRegistryRetryItems([]);
               setStatusMessage("");
             }}
           />
@@ -2140,11 +2185,13 @@ function UploadPanel({
         <button
           className="button button-primary publish-button"
           type="button"
-          disabled={!canUpload}
-          onClick={handleUpload}
+          disabled={registryRetryItems.length > 0 ? false : !canUpload}
+          onClick={registryRetryItems.length > 0 ? handleRetryRegistry : handleUpload}
         >
           <PlugZap size={18} />
-          {uploadBlobs.isPending
+          {registryRetryItems.length > 0
+            ? "Retry access registry"
+            : uploadBlobs.isPending
             ? "Publishing..."
             : publishPhase === "error" && files.length > 0
               ? "Retry publish"
