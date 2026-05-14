@@ -1,0 +1,9 @@
+[package]
+name = "PaybyMarketplace"
+version = "0.1.0"
+
+[addresses]
+payby_marketplace = "_"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "mainnet", subdir = "aptos-move/framework/aptos-framework" }

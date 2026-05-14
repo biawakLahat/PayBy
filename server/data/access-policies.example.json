@@ -1,0 +1,9 @@
+{
+  "shelbynet::0xcreator::example.mp4": {
+    "mode": "allowlist",
+    "allowlist": ["0xviewer"],
+    "price": "",
+    "currency": "APT",
+    "updatedAt": "2026-05-15T00:00:00.000Z"
+  }
+}
