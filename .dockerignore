@@ -1,0 +1,14 @@
+.aptos/
+.git/
+contracts/**/build/
+dist/
+docs/
+logs/
+node_modules/
+server/data/access-policies.json
+server/data/media-metadata.json
+
+.env
+.env.*
+*.err
+*.log

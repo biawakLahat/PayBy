@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: payby-gateway
+    runtime: docker
+    dockerfilePath: ./Dockerfile.gateway
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYBY_GATEWAY_ALLOWED_ORIGINS
+        sync: false
+      - key: PAYBY_GATEWAY_SECRET
+        generateValue: true
+      - key: PAYBY_GATEWAY_ADMIN_TOKEN
+        generateValue: true
+      - key: PAYBY_GATEWAY_ALLOW_CLIENT_POLICY
+        value: "false"
+      - key: PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY
+        value: "false"
+      - key: PAYBY_TESTNET_MARKETPLACE_ADDRESS
+        value: 0x6d03128473f5b86cb408520873e29ad239db7a9ed72fa1fa3fd7a95bcc6ae838
+      - key: PAYBY_SHELBYNET_MARKETPLACE_ADDRESS
+        value: 0x6d03128473f5b86cb408520873e29ad239db7a9ed72fa1fa3fd7a95bcc6ae838
+      - key: PAYBY_TESTNET_FULLNODE_URL
+        value: https://api.testnet.aptoslabs.com/v1
+      - key: PAYBY_SHELBYNET_FULLNODE_URL
+        value: https://api.shelbynet.aptoslabs.com/v1
+      - key: PAYBY_APTOS_TESTNET_API_KEY
+        sync: false
+      - key: PAYBY_APTOS_SHELBYNET_API_KEY
+        sync: false

@@ -57,6 +57,23 @@ Production policy should be written server-side through the policy API.
 For community use, avoid `PAYBY_GATEWAY_ALLOWED_ORIGINS=*`; set it to the
 deployed frontend origin.
 
+Production gateway guardrails are enabled when `NODE_ENV=production`. The
+gateway will refuse to boot if the secret is weak, CORS is open, signature
+verification is disabled, client-supplied policies are enabled, or marketplace
+addresses are missing.
+
+Docker deployment:
+
+```bash
+docker build -f Dockerfile.gateway -t payby-gateway .
+docker run --env-file .env -p 8787:8787 payby-gateway
+```
+
+Render deployment is scaffolded in `render.yaml`. Set
+`PAYBY_GATEWAY_ALLOWED_ORIGINS` to the deployed frontend URL before first
+deploy. Render generates `PAYBY_GATEWAY_SECRET` and
+`PAYBY_GATEWAY_ADMIN_TOKEN`; keep both private.
+
 ## Access Registry Contract
 
 Payby includes a Move package for the marketplace/access registry:

@@ -28,7 +28,7 @@ async function loadDotEnv() {
 
 await loadDotEnv();
 
-const port = Number(process.env.PAYBY_GATEWAY_PORT || 8787);
+const port = Number(process.env.PORT || process.env.PAYBY_GATEWAY_PORT || 8787);
 const secret = process.env.PAYBY_GATEWAY_SECRET || "payby-local-dev-secret";
 const adminToken = process.env.PAYBY_GATEWAY_ADMIN_TOKEN || "";
 const allowedOrigins = String(process.env.PAYBY_GATEWAY_ALLOWED_ORIGINS || "*")
@@ -46,6 +46,7 @@ const sessionRateLimitMax = Number(
 const allowClientPolicy = process.env.PAYBY_GATEWAY_ALLOW_CLIENT_POLICY === "true";
 const skipSignatureVerify =
   process.env.PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY === "true";
+const isProduction = process.env.NODE_ENV === "production";
 const sessionRateBuckets = new Map();
 
 const networks = {
@@ -85,6 +86,39 @@ const marketplaceContracts = {
     process.env.VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS ||
     "",
 };
+
+function assertProductionConfig() {
+  if (!isProduction) return;
+
+  const errors = [];
+  if (!secret || secret === "payby-local-dev-secret" || secret.length < 32) {
+    errors.push("PAYBY_GATEWAY_SECRET must be at least 32 characters.");
+  }
+  if (!adminToken || adminToken.length < 24) {
+    errors.push("PAYBY_GATEWAY_ADMIN_TOKEN must be set for production policy writes.");
+  }
+  if (allowedOrigins.includes("*")) {
+    errors.push("PAYBY_GATEWAY_ALLOWED_ORIGINS must not be '*' in production.");
+  }
+  if (allowClientPolicy) {
+    errors.push("PAYBY_GATEWAY_ALLOW_CLIENT_POLICY must be false in production.");
+  }
+  if (skipSignatureVerify) {
+    errors.push("PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY must be false in production.");
+  }
+  if (!marketplaceContracts.shelbynet) {
+    errors.push("PAYBY_SHELBYNET_MARKETPLACE_ADDRESS is required.");
+  }
+  if (!marketplaceContracts["shelby-testnet"]) {
+    errors.push("PAYBY_TESTNET_MARKETPLACE_ADDRESS is required.");
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid production gateway config:\n- ${errors.join("\n- ")}`);
+  }
+}
+
+assertProductionConfig();
 
 function getRequestOrigin(req) {
   return String(req.headers.origin || "");
