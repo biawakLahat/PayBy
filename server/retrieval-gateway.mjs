@@ -403,11 +403,23 @@ async function callViewFunction({ network, functionId, args }) {
   return response.json();
 }
 
-async function assertPolicyAccess({ policy, address, network, blobName }) {
+function assertListingOwner({ listing, owner }) {
+  if (!listing) return;
+  if (String(listing.owner || "").toLowerCase() === String(owner || "").toLowerCase()) {
+    return;
+  }
+
+  const error = new Error("On-chain listing owner does not match this media route.");
+  error.status = 403;
+  throw error;
+}
+
+async function assertPolicyAccess({ policy, address, network, owner, blobName }) {
   const mode = policy.mode || "free";
 
   if (marketplaceContracts[network]) {
     const listing = await getOnChainListing({ network, blobName });
+    assertListingOwner({ listing, owner });
     if (listing?.active && listing.policy !== 0) {
       if (await canAccessOnChain({ network, address, blobName })) return;
 
@@ -424,6 +436,14 @@ async function assertPolicyAccess({ policy, address, network, blobName }) {
   if (mode === "free") return;
 
   if (marketplaceContracts[network]) {
+    const listing = await getOnChainListing({ network, blobName });
+    assertListingOwner({ listing, owner });
+    if (!listing?.active) {
+      const error = new Error("Gated media is missing an active on-chain listing.");
+      error.status = 403;
+      throw error;
+    }
+
     if (await canAccessOnChain({ network, address, blobName })) return;
 
     if (mode === "paid") {
@@ -563,7 +583,7 @@ async function handleSession(req, res) {
 
   try {
     verifyMessage({ address, publicKey, signedMessage, message, nonce });
-    await assertPolicyAccess({ policy, address, network, blobName });
+    await assertPolicyAccess({ policy, address, network, owner, blobName });
   } catch (error) {
     return json(req, res, error.status || 401, { error: error.message });
   }

@@ -255,6 +255,43 @@ module payby_marketplace::payby_marketplace {
     }
 
     #[view]
+    public fun get_listing_count(): u64 acquires Registry {
+        if (!exists<Registry>(@payby_marketplace)) {
+            return 0
+        };
+
+        vector::length(&borrow_global<Registry>(@payby_marketplace).listing_keys)
+    }
+
+    #[view]
+    public fun get_listing_key(index: u64): String acquires Registry {
+        if (!exists<Registry>(@payby_marketplace)) {
+            return std::string::utf8(b"")
+        };
+
+        let registry = borrow_global<Registry>(@payby_marketplace);
+        if (index >= vector::length(&registry.listing_keys)) {
+            return std::string::utf8(b"")
+        };
+
+        *vector::borrow(&registry.listing_keys, index)
+    }
+
+    #[view]
+    public fun get_purchases(user: address): vector<String> acquires Registry {
+        if (!exists<Registry>(@payby_marketplace)) {
+            return vector::empty<String>()
+        };
+
+        let registry = borrow_global<Registry>(@payby_marketplace);
+        if (!table::contains(&registry.purchases, user)) {
+            return vector::empty<String>()
+        };
+
+        *table::borrow(&registry.purchases, user)
+    }
+
+    #[view]
     public fun can_access(user: address, blob_name: String): bool acquires Registry {
         if (!exists<Registry>(@payby_marketplace)) {
             return false
