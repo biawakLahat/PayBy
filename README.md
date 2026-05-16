@@ -129,8 +129,18 @@ encoding depends on it.
 Before inviting a wider community, run:
 
 ```bash
-npm run verify
+npm run verify:community
 ```
+
+For a faster environment check without rebuilding the frontend, run:
+
+```bash
+npm run check:readiness
+```
+
+The readiness check verifies configured marketplace addresses, callable
+marketplace views, payment asset configuration, and gateway health without
+printing secrets.
 
 Minimum launch checklist:
 
