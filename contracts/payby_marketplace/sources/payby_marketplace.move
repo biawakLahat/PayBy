@@ -37,6 +37,15 @@ module payby_marketplace::payby_marketplace {
         listing_keys: vector<String>,
     }
 
+    struct ListingMetadata has store, copy, drop {
+        metadata_uri: String,
+        metadata_hash: String,
+    }
+
+    struct MetadataRegistry has key {
+        metadata: Table<String, ListingMetadata>,
+    }
+
     #[event]
     struct ListingCreated has drop, store {
         owner: address,
@@ -59,6 +68,14 @@ module payby_marketplace::payby_marketplace {
         blob_name: String,
     }
 
+    #[event]
+    struct ListingMetadataUpdated has drop, store {
+        owner: address,
+        blob_name: String,
+        metadata_uri: String,
+        metadata_hash: String,
+    }
+
     public entry fun initialize(admin: &signer) {
         let admin_addr = signer::address_of(admin);
         assert!(admin_addr == @payby_marketplace, E_NOT_AUTHORIZED);
@@ -68,6 +85,12 @@ module payby_marketplace::payby_marketplace {
                 listings: table::new<String, Listing>(),
                 purchases: table::new<address, vector<String>>(),
                 listing_keys: vector::empty<String>(),
+            });
+        };
+
+        if (!exists<MetadataRegistry>(admin_addr)) {
+            move_to(admin, MetadataRegistry {
+                metadata: table::new<String, ListingMetadata>(),
             });
         };
     }
@@ -115,6 +138,38 @@ module payby_marketplace::payby_marketplace {
                 price,
             });
         };
+    }
+
+    public entry fun upsert_listing_with_metadata(
+        owner: &signer,
+        blob_name: String,
+        title: String,
+        policy: u8,
+        price: u64,
+        payment_metadata: address,
+        allowlist: vector<address>,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires Registry, MetadataRegistry {
+        upsert_listing_internal(
+            owner,
+            blob_name,
+            title,
+            policy,
+            price,
+            payment_metadata,
+            allowlist,
+        );
+        upsert_listing_metadata_internal(owner, blob_name, metadata_uri, metadata_hash);
+    }
+
+    public entry fun upsert_listing_metadata(
+        owner: &signer,
+        blob_name: String,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires Registry, MetadataRegistry {
+        upsert_listing_metadata_internal(owner, blob_name, metadata_uri, metadata_hash);
     }
 
     public entry fun create_listing(
@@ -255,6 +310,21 @@ module payby_marketplace::payby_marketplace {
     }
 
     #[view]
+    public fun get_listing_metadata(blob_name: String): (String, String, bool) acquires MetadataRegistry {
+        if (!exists<MetadataRegistry>(@payby_marketplace)) {
+            return (std::string::utf8(b""), std::string::utf8(b""), false)
+        };
+
+        let registry = borrow_global<MetadataRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.metadata, blob_name)) {
+            return (std::string::utf8(b""), std::string::utf8(b""), false)
+        };
+
+        let metadata = table::borrow(&registry.metadata, blob_name);
+        (metadata.metadata_uri, metadata.metadata_hash, true)
+    }
+
+    #[view]
     public fun get_listing_count(): u64 acquires Registry {
         if (!exists<Registry>(@payby_marketplace)) {
             return 0
@@ -337,5 +407,80 @@ module payby_marketplace::payby_marketplace {
         if (policy == POLICY_PAID) {
             assert!(payment_metadata != @0x0, E_PAYMENT_ASSET_REQUIRED);
         };
+    }
+
+    fun upsert_listing_internal(
+        owner: &signer,
+        blob_name: String,
+        title: String,
+        policy: u8,
+        price: u64,
+        payment_metadata: address,
+        allowlist: vector<address>,
+    ) acquires Registry {
+        assert_supported_policy(policy, payment_metadata);
+
+        let owner_addr = signer::address_of(owner);
+        let registry = borrow_global_mut<Registry>(@payby_marketplace);
+        if (table::contains(&registry.listings, blob_name)) {
+            let listing = table::borrow_mut(&mut registry.listings, blob_name);
+            assert!(listing.owner == owner_addr, E_NOT_AUTHORIZED);
+            listing.title = title;
+            listing.policy = policy;
+            listing.price = price;
+            listing.payment_metadata = payment_metadata;
+            listing.allowlist = allowlist;
+            listing.active = true;
+        } else {
+            let listing = Listing {
+                owner: owner_addr,
+                blob_name,
+                title,
+                policy,
+                price,
+                payment_metadata,
+                allowlist,
+                active: true,
+            };
+            table::add(&mut registry.listings, blob_name, listing);
+            vector::push_back(&mut registry.listing_keys, blob_name);
+
+            event::emit(ListingCreated {
+                owner: owner_addr,
+                blob_name,
+                policy,
+                price,
+            });
+        };
+    }
+
+    fun upsert_listing_metadata_internal(
+        owner: &signer,
+        blob_name: String,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires Registry, MetadataRegistry {
+        let owner_addr = signer::address_of(owner);
+        let listing_registry = borrow_global<Registry>(@payby_marketplace);
+        assert!(table::contains(&listing_registry.listings, blob_name), E_LISTING_NOT_FOUND);
+        let listing = table::borrow(&listing_registry.listings, blob_name);
+        assert!(listing.owner == owner_addr, E_NOT_AUTHORIZED);
+
+        let metadata_registry = borrow_global_mut<MetadataRegistry>(@payby_marketplace);
+        let metadata = ListingMetadata { metadata_uri, metadata_hash };
+        if (table::contains(&metadata_registry.metadata, blob_name)) {
+            let current = table::borrow_mut(&mut metadata_registry.metadata, blob_name);
+            current.metadata_uri = metadata.metadata_uri;
+            current.metadata_hash = metadata.metadata_hash;
+        } else {
+            table::add(&mut metadata_registry.metadata, blob_name, metadata);
+        };
+
+        event::emit(ListingMetadataUpdated {
+            owner: owner_addr,
+            blob_name,
+            metadata_uri,
+            metadata_hash,
+        });
     }
 }

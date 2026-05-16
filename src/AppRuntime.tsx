@@ -145,6 +145,9 @@ type MediaMetadata = {
   key: string;
   owner: string;
   blobName: string;
+  metadataBlobName?: string;
+  metadataUri?: string;
+  metadataHash?: string;
   network: PaybyNetwork;
   title: string;
   description: string;
@@ -221,6 +224,8 @@ type ChainListing = {
   policy: number;
   price: string;
   paymentMetadata: string;
+  metadataUri: string;
+  metadataHash: string;
   active: boolean;
 };
 type ChainAccessProofState =
@@ -398,6 +403,155 @@ function parseAllowlistAddresses(value: string) {
     .filter(Boolean);
 }
 
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function sanitizeBlobSegment(value: string) {
+  return (
+    value
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "media"
+  );
+}
+
+function getShelbyUri(network: PaybyNetwork, owner: string, blobName: string) {
+  return `shelby://${network}/${owner}/${encodeBlobPath(blobName)}`;
+}
+
+function resolveShelbyUri(uri: string) {
+  if (!uri.startsWith("shelby://")) return uri;
+  const parsed = new URL(uri);
+  const network = parsed.hostname as PaybyNetwork;
+  const [owner = "", ...blobParts] = parsed.pathname
+    .split("/")
+    .filter(Boolean)
+    .map(decodeURIComponent);
+  if (!owner || !blobParts.length || !PAYBY_NETWORKS[network]) return "";
+  return getDownloadUrl(network, owner, blobParts.join("/"));
+}
+
+function createPaybyMetadataPayload(metadata: MediaMetadata) {
+  return {
+    schema: "payby.media.v1",
+    version: 1,
+    network: metadata.network,
+    owner: metadata.owner,
+    blobName: metadata.blobName,
+    mediaUri: getShelbyUri(metadata.network, metadata.owner, metadata.blobName),
+    metadataBlobName: metadata.metadataBlobName ?? "",
+    title: metadata.title,
+    description: metadata.description,
+    category: metadata.category,
+    tags: metadata.tags,
+    coverUrl: metadata.coverUrl,
+    visibility: metadata.visibility,
+    accessMode: metadata.accessMode,
+    price: metadata.price,
+    currency: metadata.currency,
+    allowlist: metadata.allowlist,
+    createdAt: metadata.createdAt,
+  };
+}
+
+function mediaMetadataFromPayload(
+  payload: Record<string, unknown>,
+  fallback: {
+    network: PaybyNetwork;
+    owner: string;
+    blobName: string;
+    metadataUri?: string;
+    metadataHash?: string;
+  },
+): MediaMetadata {
+  const accessMode = ["free", "allowlist", "nft", "paid", "subscription"].includes(
+    payload.accessMode as string,
+  )
+    ? (payload.accessMode as AccessMode)
+    : "free";
+  const visibility = ["public", "unlisted", "private"].includes(
+    payload.visibility as string,
+  )
+    ? (payload.visibility as VisibilityMode)
+    : "unlisted";
+  const network = (payload.network as PaybyNetwork) || fallback.network;
+  const owner = (payload.owner as string) || fallback.owner;
+  const blobName = (payload.blobName as string) || fallback.blobName;
+
+  return {
+    key: createMediaKey(owner, blobName),
+    owner,
+    blobName,
+    metadataBlobName: (payload.metadataBlobName as string) || "",
+    metadataUri: fallback.metadataUri,
+    metadataHash: fallback.metadataHash,
+    network,
+    title: (payload.title as string) || blobName,
+    description: (payload.description as string) || "",
+    category: (payload.category as string) || "On-chain media",
+    tags: Array.isArray(payload.tags)
+      ? payload.tags.map(String).filter(Boolean).slice(0, 12)
+      : ["on-chain"],
+    coverUrl: (payload.coverUrl as string) || "",
+    visibility,
+    accessMode,
+    price: (payload.price as string) || "",
+    currency: payload.currency === "SHELBYUSD" ? "SHELBYUSD" : "APT",
+    allowlist: (payload.allowlist as string) || "",
+    createdAt:
+      typeof payload.createdAt === "number" && Number.isFinite(payload.createdAt)
+        ? payload.createdAt
+        : Date.now(),
+  };
+}
+
+async function fetchCommittedMetadata(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+  blobName: string,
+  listing: ChainListing,
+): Promise<MediaMetadata | null> {
+  if (!listing.metadataUri || !listing.metadataHash) return null;
+  const url = resolveShelbyUri(listing.metadataUri);
+  if (!url) return null;
+
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const text = await response.text();
+  const hash = await sha256Hex(text);
+  if (hash !== listing.metadataHash) return null;
+
+  const payload = JSON.parse(text) as Record<string, unknown>;
+  return mediaMetadataFromPayload(payload, {
+    network: selectedNetwork,
+    owner,
+    blobName,
+    metadataUri: listing.metadataUri,
+    metadataHash: listing.metadataHash,
+  });
+}
+
 function parseAssetUnits(value: string) {
   const normalized = value.trim();
   if (!normalized) return 0;
@@ -415,9 +569,12 @@ function marketplaceFunction(
     | "purchase"
     | "can_access"
     | "get_listing"
+    | "get_listing_metadata"
     | "get_listing_count"
     | "get_listing_key"
-    | "get_purchases",
+    | "get_purchases"
+    | "upsert_listing_metadata"
+    | "upsert_listing_with_metadata",
 ): MoveFunctionId | "" {
   const address = PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress;
   return address
@@ -441,7 +598,20 @@ async function readChainListing(
   if (!functionId) return null;
 
   const data = await callMarketplaceView(selectedNetwork, functionId, [blobName]);
-  return parseChainListing(data);
+  const listing = parseChainListing(data);
+  if (!listing.found) return listing;
+
+  try {
+    const metadata = await readChainListingMetadata(selectedNetwork, blobName);
+    if (metadata) {
+      listing.metadataUri = metadata.metadataUri;
+      listing.metadataHash = metadata.metadataHash;
+    }
+  } catch {
+    // Older deployments may not expose metadata commitment views yet.
+  }
+
+  return listing;
 }
 
 async function callMarketplaceView(
@@ -486,7 +656,25 @@ function parseChainListing(data: unknown[]): ChainListing {
     policy: Number(policy ?? 0),
     price: price?.toString() ?? "0",
     paymentMetadata: paymentMetadata?.toString() ?? "",
+    metadataUri: "",
+    metadataHash: "",
     active: Boolean(active),
+  };
+}
+
+async function readChainListingMetadata(
+  selectedNetwork: PaybyNetwork,
+  blobName: string,
+) {
+  const functionId = marketplaceFunction(selectedNetwork, "get_listing_metadata");
+  if (!functionId) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [blobName]);
+  const [metadataUri, metadataHash, found] = data;
+  if (!found) return null;
+  return {
+    metadataUri: metadataUri?.toString() ?? "",
+    metadataHash: metadataHash?.toString() ?? "",
   };
 }
 
@@ -570,6 +758,8 @@ function metadataFromChainListing(
     key: createMediaKey(listing.owner, blobName),
     owner: listing.owner,
     blobName,
+    metadataUri: listing.metadataUri,
+    metadataHash: listing.metadataHash,
     network: selectedNetwork,
     title: listing.title || blobName,
     description: "Recovered from the Payby marketplace registry.",
@@ -593,8 +783,8 @@ function getAccessRegistryBlocker(
   if (!CHAIN_SUPPORTED_ACCESS_MODES.has(accessMode)) {
     return "NFT and subscription gates need a verifier contract before they can be published safely.";
   }
-  if (accessMode !== "free" && !network.marketplaceContractAddress) {
-    return "Set the Payby marketplace contract address before publishing gated media.";
+  if (!network.marketplaceContractAddress) {
+    return "Set the Payby marketplace contract address before publishing Web3-native media.";
   }
   if (accessMode === "paid" && !network.paymentAssetMetadataAddress) {
     return "Set the payment asset metadata address before publishing paid unlocks.";
@@ -972,17 +1162,23 @@ async function loadOnChainPurchaseIndex(
   for (const blobName of blobNames) {
     const listing = await readChainListing(network, blobName);
     if (!listing?.found) continue;
+    const committedMetadata = await fetchCommittedMetadata(
+      network,
+      listing.owner,
+      blobName,
+      listing,
+    ).catch(() => null);
     receipts.push({
       hash: "",
       network,
       buyer,
       creator: listing.owner,
       blobName,
-      title: listing.title || blobName,
+      title: committedMetadata?.title || listing.title || blobName,
       accessMode: policyIdToAccessMode(listing.policy),
       accessType: "purchase",
-      price: listing.price,
-      currency: "APT",
+      price: committedMetadata?.price || listing.price,
+      currency: committedMetadata?.currency || "APT",
       confirmedAt: Date.now(),
     });
   }
@@ -2124,34 +2320,19 @@ function UploadPanel({
   const [registryRetryItems, setRegistryRetryItems] = React.useState<MediaMetadata[]>(
     [],
   );
-  const activePublishRef = React.useRef({ pendingIds: [] as string[], hash: "" });
+  const activePublishRef = React.useRef({
+    pendingIds: [] as string[],
+    hash: "",
+    mediaItems: [] as MediaMetadata[],
+  });
 
   const uploadBlobs = useUploadBlobs({
     client: shelbyClient,
     onSuccess: (_data, variables) => {
       if (accountAddress) {
-        const tagList = tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean);
-        const now = Date.now();
-        const items = variables.blobs.map((blob) => ({
-          key: createMediaKey(accountAddress, blob.blobName),
-          owner: accountAddress,
-          blobName: blob.blobName,
-          network: selectedNetwork,
-          title: title.trim() || blob.blobName,
-          description: description.trim(),
-          category: category.trim() || "Premium media",
-          tags: tagList,
-          coverUrl: coverUrl.trim(),
-          visibility,
-          accessMode,
-          price: price.trim(),
-          currency,
-          allowlist: allowlist.trim(),
-          createdAt: now,
-        }));
+        const items = activePublishRef.current.mediaItems;
+        const uploadedNames = new Set(variables.blobs.map((blob) => blob.blobName));
+        const mediaItems = items.filter((item) => uploadedNames.has(item.blobName));
         saveMetadata(items);
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
           status: "indexing",
@@ -2159,11 +2340,11 @@ function UploadPanel({
         });
         transactionStore.updateTransaction(activePublishRef.current.hash, {
           status: "confirmed",
-          detail: `Registered ${items.length} ${items.length === 1 ? "blob" : "blobs"} on ${PAYBY_NETWORKS[selectedNetwork].label}`,
+          detail: `Registered ${mediaItems.length} ${mediaItems.length === 1 ? "blob" : "blobs"} on ${PAYBY_NETWORKS[selectedNetwork].label}`,
         });
         addActivity({
           type: "upload",
-          label: `Published ${items.length} media ${items.length === 1 ? "file" : "files"}`,
+          label: `Published ${mediaItems.length} media ${mediaItems.length === 1 ? "file" : "files"}`,
           detail: `Stored on ${PAYBY_NETWORKS[selectedNetwork].label}`,
         });
         void registerAccessListings(items);
@@ -2226,10 +2407,13 @@ function UploadPanel({
     !uploadBlobs.isPending;
 
   async function registerAccessListings(items: MediaMetadata[]) {
-    const restrictedItems = items.filter((item) => item.accessMode !== "free");
-    if (restrictedItems.length === 0) return;
+    const registryItems = items;
+    if (registryItems.length === 0) return;
 
-    const functionId = marketplaceFunction(selectedNetwork, "upsert_listing");
+    const functionId = marketplaceFunction(
+      selectedNetwork,
+      "upsert_listing_with_metadata",
+    );
     if (!functionId || !account) return;
 
     setPublishPhase("registry");
@@ -2237,10 +2421,10 @@ function UploadPanel({
       status: "registry",
     });
     setStatusMessage(
-      `Shelby storage complete. Registering ${restrictedItems.length} access ${restrictedItems.length === 1 ? "policy" : "policies"} on Aptos.`,
+      `Shelby storage complete. Registering ${registryItems.length} on-chain ${registryItems.length === 1 ? "listing" : "listings"} with metadata commitments.`,
     );
 
-    for (const item of restrictedItems) {
+    for (const item of registryItems) {
       try {
         const response = await signAndSubmitTransaction({
           data: {
@@ -2253,6 +2437,8 @@ function UploadPanel({
               PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
                 ZERO_ADDRESS,
               parseAllowlistAddresses(item.allowlist),
+              item.metadataUri || "",
+              item.metadataHash || "",
             ],
           },
         });
@@ -2265,14 +2451,14 @@ function UploadPanel({
             network: selectedNetwork,
             status: "pending",
             label: "Payby access registry",
-            detail: `Registering ${item.title} access policy`,
+            detail: `Registering ${item.title} listing and metadata commitment`,
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
           await waitForTransaction(selectedNetwork, hash);
           transactionStore.updateTransaction(hash, {
             status: "confirmed",
-            detail: `${item.title} access policy is registered on-chain.`,
+            detail: `${item.title} listing and metadata commitment are registered on-chain.`,
           });
         }
       } catch (error) {
@@ -2281,7 +2467,7 @@ function UploadPanel({
             ? error.message
             : "Access registry transaction failed.";
         setPublishPhase("error");
-        setRegistryRetryItems(restrictedItems);
+        setRegistryRetryItems(registryItems);
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
           status: "failed",
           error: message,
@@ -2302,11 +2488,11 @@ function UploadPanel({
       status: "indexing",
       error: "",
     });
-    setStatusMessage("Published to Shelby and registered in Payby access registry.");
+    setStatusMessage("Published to Shelby with on-chain listing and metadata commitment.");
     addActivity({
       type: "metadata",
-      label: "Registered access policies",
-      detail: restrictedItems.map((item) => item.blobName).join(", "),
+      label: "Registered on-chain listings",
+      detail: registryItems.map((item) => item.blobName).join(", "),
     });
   }
 
@@ -2363,13 +2549,63 @@ function UploadPanel({
       `Preparing ${files.length} ${files.length === 1 ? "file" : "files"} for Shelby registration.`,
     );
 
-    const blobs = await Promise.all(
-      files.map(async (file) => ({
-        blobName: file.name,
-        blobData: new Uint8Array(await file.arrayBuffer()),
-      })),
-    );
     const now = Date.now();
+    const tagList = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    const mediaItems: MediaMetadata[] = [];
+    const metadataBlobs: Array<{ blobName: string; blobData: Uint8Array }> = [];
+    const mediaBlobs = await Promise.all(
+      files.map(async (file) => {
+        const metadataBlobName = `.payby/${now}-${crypto.randomUUID()}-${sanitizeBlobSegment(
+          file.name,
+        )}.metadata.json`;
+        const baseMetadata: MediaMetadata = {
+          key: createMediaKey(accountAddress, file.name),
+          owner: accountAddress,
+          blobName: file.name,
+          metadataBlobName,
+          network: selectedNetwork,
+          title: title.trim() || file.name,
+          description: description.trim(),
+          category: category.trim() || "Premium media",
+          tags: tagList,
+          coverUrl: coverUrl.trim(),
+          visibility,
+          accessMode,
+          price: price.trim(),
+          currency,
+          allowlist: allowlist.trim(),
+          createdAt: now,
+        };
+        const metadataPayload = createPaybyMetadataPayload(baseMetadata);
+        const metadataJson = stableStringify(metadataPayload);
+        const metadataHash = await sha256Hex(metadataJson);
+        const committedMetadata: MediaMetadata = {
+          ...baseMetadata,
+          metadataUri: getShelbyUri(
+            selectedNetwork,
+            accountAddress,
+            metadataBlobName,
+          ),
+          metadataHash,
+        };
+        mediaItems.push(committedMetadata);
+        metadataBlobs.push({
+          blobName: metadataBlobName,
+          blobData: new TextEncoder().encode(
+            stableStringify(createPaybyMetadataPayload(committedMetadata)),
+          ),
+        });
+
+        return {
+          blobName: file.name,
+          blobData: new Uint8Array(await file.arrayBuffer()),
+        };
+      }),
+    );
+    const blobs = [...mediaBlobs, ...metadataBlobs];
     const pendingItems = files.map((file) => ({
       id: crypto.randomUUID(),
       owner: accountAddress,
@@ -2386,6 +2622,7 @@ function UploadPanel({
     activePublishRef.current = {
       pendingIds: pendingItems.map((item) => item.id),
       hash: "",
+      mediaItems,
     };
     pendingPublishStore.upsertPublishes(pendingItems);
 
@@ -3013,14 +3250,24 @@ function VaultList({
         accountAddress,
       );
       setChainListingCount(listings.length);
-      const recoveredMetadata = listings
-        .filter(
-          ({ blobName }) =>
-            !metadataStore.metadata[createMediaKey(accountAddress, blobName)],
+      const recoveredMetadata = (
+        await Promise.all(
+          listings
+            .filter(
+              ({ blobName }) =>
+                !metadataStore.metadata[createMediaKey(accountAddress, blobName)],
+            )
+            .map(async ({ blobName, listing }) =>
+              (await fetchCommittedMetadata(
+                selectedNetwork,
+                accountAddress,
+                blobName,
+                listing,
+              ).catch(() => null)) ??
+              metadataFromChainListing(selectedNetwork, blobName, listing),
+            ),
         )
-        .map(({ blobName, listing }) =>
-          metadataFromChainListing(selectedNetwork, blobName, listing),
-        );
+      ).filter((item): item is MediaMetadata => Boolean(item));
 
       if (recoveredMetadata.length > 0) {
         metadataStore.saveMetadata(recoveredMetadata);
@@ -3493,7 +3740,10 @@ function MediaDetailPage({
       });
       return;
     }
-    const functionId = marketplaceFunction(selectedNetwork, "upsert_listing");
+    const functionId = marketplaceFunction(
+      selectedNetwork,
+      "upsert_listing_with_metadata",
+    );
     if (!functionId) {
       setActionMessage("Payby marketplace contract is not configured.");
       return;
@@ -3513,6 +3763,8 @@ function MediaDetailPage({
             PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
               ZERO_ADDRESS,
             parseAllowlistAddresses(metadata.allowlist),
+            metadata.metadataUri || "",
+            metadata.metadataHash || "",
           ],
         },
       });
@@ -3561,7 +3813,10 @@ function MediaDetailPage({
       return;
     }
 
-    const functionId = marketplaceFunction(selectedNetwork, "upsert_listing");
+    const functionId = marketplaceFunction(
+      selectedNetwork,
+      "upsert_listing_with_metadata",
+    );
     if (!functionId) {
       setActionMessage("Payby marketplace contract is not configured.");
       return;
@@ -3585,6 +3840,8 @@ function MediaDetailPage({
             PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
               ZERO_ADDRESS,
             parseAllowlistAddresses(nextMetadata.allowlist),
+            nextMetadata.metadataUri || "",
+            nextMetadata.metadataHash || "",
           ],
         },
       });
@@ -4736,7 +4993,10 @@ function PublicMediaPage({
     useWallet();
   const owner = route.owner ?? "";
   const blobName = route.blobName ?? "";
-  const metadata = metadataStore.metadata[createMediaKey(owner, blobName)];
+  const cachedMetadata = metadataStore.metadata[createMediaKey(owner, blobName)];
+  const [committedMetadata, setCommittedMetadata] =
+    React.useState<MediaMetadata | null>(null);
+  const metadata = committedMetadata ?? cachedMetadata;
   const [unlockState, setUnlockState] = React.useState<UnlockState>("idle");
   const [accessToken, setAccessToken] = React.useState("");
   const [unlockMessage, setUnlockMessage] = React.useState("");
@@ -4846,6 +5106,28 @@ function PublicMediaPage({
       cancelled = true;
     };
   }, [blobName, marketplaceConfigured, selectedNetwork]);
+
+  React.useEffect(() => {
+    if (!chainListing?.found || !chainListing.metadataUri || !chainListing.metadataHash) {
+      setCommittedMetadata(null);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchCommittedMetadata(selectedNetwork, owner, blobName, chainListing)
+      .then((item) => {
+        if (cancelled || !item) return;
+        setCommittedMetadata(item);
+        metadataStore.saveMetadata([item]);
+      })
+      .catch(() => {
+        if (!cancelled) setCommittedMetadata(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blobName, chainListing, metadataStore.saveMetadata, owner, selectedNetwork]);
 
   React.useEffect(() => {
     if (!buyerAddress || !blobName) {

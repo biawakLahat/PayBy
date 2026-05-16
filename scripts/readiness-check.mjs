@@ -108,6 +108,7 @@ async function checkNetwork([key, network]) {
 
   for (const functionName of [
     "get_listing_count",
+    "get_listing_metadata",
     "get_purchases",
     "can_access",
   ]) {
@@ -115,6 +116,8 @@ async function checkNetwork([key, network]) {
       const args =
         functionName === "get_purchases"
           ? ["0x0"]
+          : functionName === "get_listing_metadata"
+            ? ["__payby_readiness_probe__"]
           : functionName === "can_access"
             ? ["0x0", "__payby_readiness_probe__"]
             : [];
