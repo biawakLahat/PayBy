@@ -1568,25 +1568,6 @@ function LandingPage({
       </header>
 
       <section className="hero">
-        <div className="hero-edge hero-edge-left" aria-hidden="true">
-          <span className="edge-kicker">Shelby route</span>
-          <strong>creator.media</strong>
-          <div className="edge-track">
-            <i />
-            <i />
-            <i />
-          </div>
-          <small>rpc online</small>
-        </div>
-        <div className="hero-edge hero-edge-right" aria-hidden="true">
-          <span className="edge-kicker">Aptos signer</span>
-          <strong>wallet proof</strong>
-          <div className="edge-orbit">
-            <i />
-            <i />
-          </div>
-          <small>shelbynet + testnet</small>
-        </div>
         <div className="hero-grid">
           <div className="hero-copy">
             <span className="hero-pill">
