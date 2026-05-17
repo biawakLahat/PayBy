@@ -617,10 +617,25 @@ async function readChainListing(
   try {
     if (!ownerFunctionId || !owner) throw new Error("Owner-scoped listing unavailable.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
+    const ownerListing = parseChainListing(data);
+    if (ownerListing.found || !legacyFunctionId) {
+      if (!ownerListing.found) return ownerListing;
+      try {
+        const metadata = await readChainListingMetadata(selectedNetwork, owner, blobName);
+        if (metadata) {
+          ownerListing.metadataUri = metadata.metadataUri;
+          ownerListing.metadataHash = metadata.metadataHash;
+        }
+      } catch {
+        // Older deployments may not expose metadata commitment views yet.
+      }
+      return ownerListing;
+    }
   } catch {
     if (!legacyFunctionId) return null;
-    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
   }
+
+  data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
   const listing = parseChainListing(data);
   if (!listing.found) return listing;
 
@@ -701,10 +716,19 @@ async function readChainListingMetadata(
   try {
     if (!ownerFunctionId || !owner) throw new Error("Owner-scoped metadata unavailable.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
+    const [ownerMetadataUri, ownerMetadataHash, ownerFound] = data;
+    if (ownerFound || !legacyFunctionId) {
+      if (!ownerFound) return null;
+      return {
+        metadataUri: ownerMetadataUri?.toString() ?? "",
+        metadataHash: ownerMetadataHash?.toString() ?? "",
+      };
+    }
   } catch {
     if (!legacyFunctionId) return null;
-    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
   }
+
+  data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
   const [metadataUri, metadataHash, found] = data;
   if (!found) return null;
   return {
@@ -731,13 +755,16 @@ async function readChainAccess(
       user,
       blobName,
     ]);
+    const ownerAllowed = Boolean(data[0]);
+    if (ownerAllowed || !legacyFunctionId) return ownerAllowed;
   } catch {
     if (!legacyFunctionId) return null;
-    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [
-      user,
-      blobName,
-    ]);
   }
+
+  data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [
+    user,
+    blobName,
+  ]);
   return Boolean(data[0]);
 }
 
@@ -757,10 +784,15 @@ async function readChainPurchases(
   try {
     if (!ownerFunctionId || !owner) throw new Error("Owner-scoped purchase list unavailable.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [buyer, owner]);
+    const ownerPurchases = Array.isArray(data[0]) ? data[0] : data;
+    if (ownerPurchases.length > 0 || !legacyFunctionId) {
+      return ownerPurchases.map((item) => item?.toString() ?? "").filter(Boolean);
+    }
   } catch {
     if (!legacyFunctionId) return null;
-    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [buyer]);
   }
+
+  data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [buyer]);
   const purchases = Array.isArray(data[0]) ? data[0] : data;
   return purchases.map((item) => item?.toString() ?? "").filter(Boolean);
 }
@@ -821,13 +853,16 @@ async function readCreatorChainListings(
   const ownerCount = await readOwnerChainListingCount(selectedNetwork, owner).catch(
     () => null,
   );
-  const count = ownerCount ?? (await readChainListingCount(selectedNetwork));
+  const count =
+    ownerCount && ownerCount > 0
+      ? ownerCount
+      : await readChainListingCount(selectedNetwork);
   if (count === null) return [];
 
   const capped = Math.min(count, limit);
   const listings: Array<{ blobName: string; listing: ChainListing }> = [];
   for (let index = 0; index < capped; index += 1) {
-    const blobName = ownerCount === null
+    const blobName = !ownerCount || ownerCount <= 0
       ? await readChainListingKey(selectedNetwork, index)
       : await readOwnerChainListingKey(selectedNetwork, owner, index);
     if (!blobName) continue;
