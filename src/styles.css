@@ -2219,12 +2219,11 @@ a {
 }
 
 .workspace {
-  width: min(100%, 1740px);
+  width: 100%;
   min-height: 100vh;
   display: grid;
   align-content: start;
   gap: clamp(20px, 2.4vw, 32px);
-  margin: 0 auto;
   padding: clamp(24px, 3vw, 44px);
 }
 
