@@ -5,7 +5,15 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/app/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/media/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/",
       "destination": "/index.html"
     }
   ],
