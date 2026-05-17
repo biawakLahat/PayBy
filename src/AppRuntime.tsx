@@ -245,8 +245,23 @@ const ACTIVITY_KEY = "payby-activity-v1";
 const PENDING_PUBLISH_KEY = "payby-pending-publishes-v1";
 const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
-const retrievalGatewayUrl =
-  import.meta.env.VITE_PAYBY_RETRIEVAL_GATEWAY_URL?.replace(/\/$/, "") ?? "";
+function resolveRetrievalGatewayUrl() {
+  const configured =
+    import.meta.env.VITE_PAYBY_RETRIEVAL_GATEWAY_URL?.replace(/\/$/, "") ?? "";
+  if (
+    configured &&
+    !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(configured)
+  ) {
+    return configured;
+  }
+
+  if (typeof window === "undefined") return configured;
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return configured;
+  return window.location.origin;
+}
+
+const retrievalGatewayUrl = resolveRetrievalGatewayUrl();
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
