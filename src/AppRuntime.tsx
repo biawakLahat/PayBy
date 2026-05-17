@@ -250,6 +250,8 @@ const ACTIVITY_KEY = "payby-activity-v1";
 const PENDING_PUBLISH_KEY = "payby-pending-publishes-v1";
 const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
+const VAULT_PAGE_SIZE = 8;
+const ACTIVITY_PAGE_SIZE = 8;
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
@@ -1029,6 +1031,17 @@ function usePendingPublishes() {
     [commit],
   );
 
+  const removePublishes = React.useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const removeIds = new Set(ids);
+      setPendingPublishes((current) =>
+        commit(current.filter((item) => !removeIds.has(item.id))),
+      );
+    },
+    [commit],
+  );
+
   const markIndexed = React.useCallback(
     (owner: string, network: PaybyNetwork, blobNames: string[]) => {
       if (!owner || blobNames.length === 0) return;
@@ -1049,7 +1062,13 @@ function usePendingPublishes() {
     [commit],
   );
 
-  return { pendingPublishes, upsertPublishes, updatePublishes, markIndexed };
+  return {
+    pendingPublishes,
+    upsertPublishes,
+    updatePublishes,
+    removePublishes,
+    markIndexed,
+  };
 }
 
 function useTransactionHistory(
@@ -1245,6 +1264,16 @@ function getShareUrl(owner: string, blobName: string) {
 function shortenAddress(address: string) {
   if (!address) return "No wallet";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function paginateItems<T>(items: T[], page: number, pageSize: number) {
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(page, 1), pageCount);
+  return {
+    pageCount,
+    safePage,
+    pageItems: items.slice((safePage - 1) * pageSize, safePage * pageSize),
+  };
 }
 
 function fileSize(bytes = 0) {
@@ -3155,6 +3184,7 @@ function VaultList({
     signAndSubmitTransaction,
   } = useWallet();
   const [query, setQuery] = React.useState("");
+  const [vaultPage, setVaultPage] = React.useState(1);
   const [actionMessage, setActionMessage] = React.useState("");
   const [chainIndexState, setChainIndexState] = React.useState<
     "idle" | "checking" | "synced" | "unavailable" | "error"
@@ -3226,6 +3256,15 @@ function VaultList({
     const state = getExpiryState(blob.expirationMicros);
     return state.className === "is-warning" || state.className === "is-danger";
   }).length;
+  const {
+    pageItems: paginatedBlobs,
+    pageCount: vaultPageCount,
+    safePage: safeVaultPage,
+  } = paginateItems(blobs, vaultPage, VAULT_PAGE_SIZE);
+
+  React.useEffect(() => {
+    setVaultPage(1);
+  }, [accountAddress, query, selectedNetwork]);
 
   const syncCreatorChainListings = React.useCallback(async () => {
     if (!accountAddress) return;
@@ -3404,6 +3443,7 @@ function VaultList({
           items={visiblePending}
           selectedNetwork={selectedNetwork}
           onPublish={() => onNavigate({ name: "publish" })}
+          onDismiss={(id) => pendingPublishStore.removePublishes([id])}
         />
       ) : null}
 
@@ -3427,8 +3467,9 @@ function VaultList({
           onAction={() => onNavigate({ name: "publish" })}
         />
       ) : (
-        <ul className="blob-list">
-          {blobs.map((blob) => {
+        <>
+          <ul className="blob-list">
+          {paginatedBlobs.map((blob) => {
             const name = blob.blobNameSuffix ?? blob.name ?? blob.blobName ?? "untitled";
             const metadata = metadataStore.metadata[createMediaKey(accountAddress, name)];
             const url = getDownloadUrl(selectedNetwork, accountAddress, name);
@@ -3510,7 +3551,16 @@ function VaultList({
               </li>
             );
           })}
-        </ul>
+          </ul>
+          <PaginationControls
+            label="Vault pagination"
+            page={safeVaultPage}
+            pageCount={vaultPageCount}
+            total={blobs.length}
+            pageSize={VAULT_PAGE_SIZE}
+            onPageChange={setVaultPage}
+          />
+        </>
       )}
     </section>
   );
@@ -3520,17 +3570,26 @@ function PendingPublishQueue({
   items,
   selectedNetwork,
   onPublish,
+  onDismiss,
 }: {
   items: PendingPublishItem[];
   selectedNetwork: PaybyNetwork;
   onPublish: () => void;
+  onDismiss: (id: string) => void;
 }) {
+  const failedCount = items.filter((item) => item.status === "failed").length;
+  const activeCount = items.length - failedCount;
+
   return (
     <section className="pending-publish-card" aria-label="Pending publish queue">
       <div className="pending-publish-head">
         <div>
           <span>Publish queue</span>
-          <strong>{items.length} waiting for vault sync</strong>
+          <strong>
+            {failedCount > 0
+              ? `${failedCount} needs attention`
+              : `${activeCount} waiting for vault sync`}
+          </strong>
         </div>
         <button className="button button-ghost compact-button" type="button" onClick={onPublish}>
           Publish
@@ -3560,10 +3619,71 @@ function PendingPublishQueue({
             ) : (
               <em>{pendingStatusLabel(item.status)}</em>
             )}
+            {item.status === "failed" ? (
+              <button
+                className="icon-button"
+                type="button"
+                aria-label={`Dismiss failed publish ${item.title}`}
+                title="Dismiss failed publish"
+                onClick={() => onDismiss(item.id)}
+              >
+                <X size={15} />
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+function PaginationControls({
+  label,
+  page,
+  pageCount,
+  total,
+  pageSize,
+  onPageChange,
+}: {
+  label: string;
+  page: number;
+  pageCount: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(total, page * pageSize);
+
+  return (
+    <nav className="pagination-bar" aria-label={label}>
+      <span>
+        {start}-{end} of {total}
+      </span>
+      <div>
+        <button
+          className="button button-secondary compact-button"
+          type="button"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Previous
+        </button>
+        <strong>
+          Page {page} / {pageCount}
+        </strong>
+        <button
+          className="button button-secondary compact-button"
+          type="button"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -4311,6 +4431,8 @@ function ActivityPanel({
   const [filter, setFilter] = React.useState<
     "all" | TransactionStatus | "local"
   >("all");
+  const [transactionPage, setTransactionPage] = React.useState(1);
+  const [localPage, setLocalPage] = React.useState(1);
   const confirmedCount = transactions.filter((item) => item.status === "confirmed").length;
   const pendingCount = transactions.filter((item) => item.status === "pending").length;
   const failedCount = transactions.filter((item) => item.status === "failed").length;
@@ -4321,6 +4443,16 @@ function ActivityPanel({
   const showLocalEvents = filter === "all" || filter === "local";
   const hasProofItems =
     filteredTransactions.length > 0 || (showLocalEvents && activity.length > 0);
+  const {
+    pageItems: paginatedTransactions,
+    pageCount: transactionPageCount,
+    safePage: safeTransactionPage,
+  } = paginateItems(filteredTransactions, transactionPage, ACTIVITY_PAGE_SIZE);
+  const {
+    pageItems: paginatedActivity,
+    pageCount: localPageCount,
+    safePage: safeLocalPage,
+  } = paginateItems(activity, localPage, ACTIVITY_PAGE_SIZE);
   const filters: { value: "all" | TransactionStatus | "local"; label: string }[] = [
     { value: "all", label: "All proof" },
     { value: "confirmed", label: "Confirmed" },
@@ -4328,6 +4460,11 @@ function ActivityPanel({
     { value: "failed", label: "Failed" },
     { value: "local", label: "Local events" },
   ];
+
+  React.useEffect(() => {
+    setTransactionPage(1);
+    setLocalPage(1);
+  }, [accountAddress, filter, selectedNetwork]);
 
   return (
     <section className="panel activity-panel">
@@ -4387,7 +4524,7 @@ function ActivityPanel({
             <strong>{filteredTransactions.length} shown</strong>
           </div>
           <ul>
-            {filteredTransactions.slice(0, 8).map((item) => (
+            {paginatedTransactions.map((item) => (
               <li className={`is-${item.status}`} key={item.id}>
                 <span>{item.status}</span>
                 <div>
@@ -4407,6 +4544,14 @@ function ActivityPanel({
               </li>
             ))}
           </ul>
+          <PaginationControls
+            label="Transaction pagination"
+            page={safeTransactionPage}
+            pageCount={transactionPageCount}
+            total={filteredTransactions.length}
+            pageSize={ACTIVITY_PAGE_SIZE}
+            onPageChange={setTransactionPage}
+          />
         </section>
       ) : null}
 
@@ -4422,16 +4567,26 @@ function ActivityPanel({
           onAction={() => onNavigate({ name: "publish" })}
         />
       ) : showLocalEvents && activity.length > 0 ? (
-        <ul className="activity-list">
-          {activity.map((item) => (
-            <li key={item.id}>
-              <span>{item.type}</span>
-              <strong>{item.label}</strong>
-              <p>{item.detail}</p>
-              <time>{new Date(item.at).toLocaleString()}</time>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="activity-list">
+            {paginatedActivity.map((item) => (
+              <li key={item.id}>
+                <span>{item.type}</span>
+                <strong>{item.label}</strong>
+                <p>{item.detail}</p>
+                <time>{new Date(item.at).toLocaleString()}</time>
+              </li>
+            ))}
+          </ul>
+          <PaginationControls
+            label="Local activity pagination"
+            page={safeLocalPage}
+            pageCount={localPageCount}
+            total={activity.length}
+            pageSize={ACTIVITY_PAGE_SIZE}
+            onPageChange={setLocalPage}
+          />
+        </>
       ) : null}
     </section>
   );

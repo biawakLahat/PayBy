@@ -3393,7 +3393,7 @@ a {
 }
 
 .pending-publish-item {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
 }
 
 .pending-state-dot {
@@ -3455,6 +3455,32 @@ a {
   font-style: normal;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.pagination-bar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--surface-strong) 66%, transparent);
+  padding: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.pagination-bar > span,
+.pagination-bar strong {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.pagination-bar > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .blob-list li {
