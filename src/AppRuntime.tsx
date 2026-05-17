@@ -173,10 +173,13 @@ type CreatorProfile = {
 type ActivityItem = {
   id: string;
   at: number;
+  wallet: string;
+  network: PaybyNetwork;
   type: "upload" | "delete" | "metadata" | "share";
   label: string;
   detail: string;
 };
+type ActivityInput = Omit<ActivityItem, "id" | "at" | "wallet" | "network">;
 
 type PendingPublishItem = {
   id: string;
@@ -196,6 +199,7 @@ type TransactionItem = {
   id: string;
   hash: string;
   network: PaybyNetwork;
+  wallet: string;
   status: TransactionStatus;
   label: string;
   detail: string;
@@ -930,27 +934,46 @@ function useCreatorProfile() {
   return { profile, saveProfile };
 }
 
-function useActivityFeed() {
+function useActivityFeed(
+  accountAddress: string,
+  selectedNetwork: PaybyNetwork,
+) {
   const [activity, setActivity] = React.useState<ActivityItem[]>(() =>
     readJson<ActivityItem[]>(ACTIVITY_KEY, []),
   );
 
-  const addActivity = React.useCallback((item: Omit<ActivityItem, "id" | "at">) => {
-    setActivity((current) => {
-      const next = [
-        {
-          id: crypto.randomUUID(),
-          at: Date.now(),
-          ...item,
-        },
-        ...current,
-      ].slice(0, 80);
-      writeJson(ACTIVITY_KEY, next);
-      return next;
-    });
-  }, []);
+  const walletActivity = React.useMemo(
+    () =>
+      activity.filter(
+        (item) =>
+          item.wallet?.toLowerCase() === accountAddress.toLowerCase() &&
+          item.network === selectedNetwork,
+      ),
+    [accountAddress, activity, selectedNetwork],
+  );
 
-  return { activity, addActivity };
+  const addActivity = React.useCallback(
+    (item: ActivityInput) => {
+      if (!accountAddress) return;
+      setActivity((current) => {
+        const next = [
+          {
+            id: crypto.randomUUID(),
+            at: Date.now(),
+            wallet: accountAddress,
+            network: selectedNetwork,
+            ...item,
+          },
+          ...current,
+        ].slice(0, 160);
+        writeJson(ACTIVITY_KEY, next);
+        return next;
+      });
+    },
+    [accountAddress, selectedNetwork],
+  );
+
+  return { activity: walletActivity, addActivity };
 }
 
 function usePendingPublishes() {
@@ -1029,9 +1052,22 @@ function usePendingPublishes() {
   return { pendingPublishes, upsertPublishes, updatePublishes, markIndexed };
 }
 
-function useTransactionHistory() {
+function useTransactionHistory(
+  accountAddress: string,
+  selectedNetwork: PaybyNetwork,
+) {
   const [transactions, setTransactions] = React.useState<TransactionItem[]>(() =>
     readJson<TransactionItem[]>(TRANSACTION_HISTORY_KEY, []),
+  );
+
+  const walletTransactions = React.useMemo(
+    () =>
+      transactions.filter(
+        (item) =>
+          item.wallet?.toLowerCase() === accountAddress.toLowerCase() &&
+          item.network === selectedNetwork,
+      ),
+    [accountAddress, selectedNetwork, transactions],
   );
 
   const commit = React.useCallback((next: TransactionItem[]) => {
@@ -1043,19 +1079,24 @@ function useTransactionHistory() {
   }, []);
 
   const upsertTransaction = React.useCallback(
-    (item: TransactionItem) => {
+    (item: Omit<TransactionItem, "wallet"> & { wallet?: string }) => {
+      if (!accountAddress) return;
       setTransactions((current) => {
         const index = current.findIndex((candidate) => candidate.hash === item.hash);
+        const scopedItem = {
+          ...item,
+          wallet: item.wallet || accountAddress,
+        };
         const next = [...current];
         if (index >= 0) {
-          next[index] = { ...next[index], ...item, updatedAt: Date.now() };
+          next[index] = { ...next[index], ...scopedItem, updatedAt: Date.now() };
         } else {
-          next.unshift(item);
+          next.unshift(scopedItem);
         }
         return commit(next);
       });
     },
-    [commit],
+    [accountAddress, commit],
   );
 
   const updateTransaction = React.useCallback(
@@ -1074,7 +1115,7 @@ function useTransactionHistory() {
     [commit],
   );
 
-  return { transactions, upsertTransaction, updateTransaction };
+  return { transactions: walletTransactions, upsertTransaction, updateTransaction };
 }
 
 function createReceiptKey(
@@ -1375,11 +1416,13 @@ function createUnlockMessage({
 
 function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
   const [route, navigate] = useRoute();
+  const wallet = useWallet();
+  const accountAddress = getAccountAddress(wallet.account);
   const metadataStore = useStoredMetadata();
   const profileStore = useCreatorProfile();
-  const activityFeed = useActivityFeed();
+  const activityFeed = useActivityFeed(accountAddress, selectedNetwork);
   const pendingPublishStore = usePendingPublishes();
-  const transactionStore = useTransactionHistory();
+  const transactionStore = useTransactionHistory(accountAddress, selectedNetwork);
   const purchaseStore = usePurchaseReceipts();
   const [theme, setTheme] = React.useState<ThemeName>(() => {
     const stored = localStorage.getItem("payby-theme");
@@ -1924,6 +1967,8 @@ function VaultApp({
             <ActivityPanel
               activity={activityFeed.activity}
               transactions={transactionStore.transactions}
+              accountAddress={accountAddress}
+              selectedNetwork={selectedNetwork}
               onNavigate={onNavigate}
             />
           ) : null}
@@ -2202,7 +2247,7 @@ function UploadPanel({
   saveMetadata: (items: MediaMetadata[]) => void;
   pendingPublishStore: ReturnType<typeof usePendingPublishes>;
   transactionStore: ReturnType<typeof useTransactionHistory>;
-  addActivity: (item: Omit<ActivityItem, "id" | "at">) => void;
+  addActivity: (item: ActivityInput) => void;
 }) {
   const {
     connected,
@@ -2315,6 +2360,35 @@ function UploadPanel({
     accessRegistryReady &&
     files.length > 0 &&
     !uploadBlobs.isPending;
+  const publishNoticeMessage =
+    statusMessage ||
+    (!walletNetworkAligned && accountAddress
+      ? walletNetworkMismatchMessage(walletNetwork, selectedNetwork)
+      : accessRegistryBlocker
+        ? accessRegistryBlocker
+        : accountAddress
+          ? "Ready for wallet-approved Shelby upload."
+          : "Connect wallet to publish.");
+  const publishNoticeTone =
+    publishPhase === "success"
+      ? "success"
+      : publishPhase === "error"
+        ? "danger"
+        : !walletNetworkAligned || accessRegistryBlocker
+          ? "warning"
+          : publishPhase === "idle"
+            ? "neutral"
+            : "info";
+  const publishNoticeTitle =
+    publishNoticeTone === "success"
+      ? "Publish complete"
+      : publishNoticeTone === "danger"
+        ? "Publish failed"
+        : publishNoticeTone === "warning"
+          ? "Action needed"
+          : publishPhase === "idle"
+            ? "Ready state"
+            : "Publish in progress";
 
   async function registerAccessListings(items: MediaMetadata[]) {
     const registryItems = items;
@@ -2783,6 +2857,23 @@ function UploadPanel({
           />
         )}
 
+        <div
+          className={`publish-alert is-${publishNoticeTone}`}
+          role={publishNoticeTone === "danger" ? "alert" : "status"}
+        >
+          {publishNoticeTone === "success" ? (
+            <Check size={18} />
+          ) : publishNoticeTone === "danger" || publishNoticeTone === "warning" ? (
+            <AlertTriangle size={18} />
+          ) : (
+            <Clock size={18} />
+          )}
+          <div>
+            <strong>{publishNoticeTitle}</strong>
+            <span>{publishNoticeMessage}</span>
+          </div>
+        </div>
+
         <button
           className="button button-primary publish-button"
           type="button"
@@ -2799,16 +2890,6 @@ function UploadPanel({
               : "Publish to Shelby"}
         </button>
 
-        <p className="inline-status">
-          {statusMessage ||
-            (!walletNetworkAligned && accountAddress
-              ? walletNetworkMismatchMessage(walletNetwork, selectedNetwork)
-              : accessRegistryBlocker
-                ? accessRegistryBlocker
-              : accountAddress
-              ? "Ready for wallet-approved Shelby upload."
-              : "Connect wallet to publish.")}
-        </p>
       </div>
 
       <aside className="support-panel">
@@ -3065,7 +3146,7 @@ function VaultList({
   metadataStore: ReturnType<typeof useStoredMetadata>;
   pendingPublishStore: ReturnType<typeof usePendingPublishes>;
   onNavigate: (route: AppRoute) => void;
-  addActivity: (item: Omit<ActivityItem, "id" | "at">) => void;
+  addActivity: (item: ActivityInput) => void;
 }) {
   const {
     account,
@@ -3529,7 +3610,7 @@ function MediaDetailPage({
   shelbyClient: ShelbyClient;
   metadataStore: ReturnType<typeof useStoredMetadata>;
   onNavigate: (route: AppRoute) => void;
-  addActivity: (item: Omit<ActivityItem, "id" | "at">) => void;
+  addActivity: (item: ActivityInput) => void;
 }) {
   const {
     account,
@@ -4128,7 +4209,7 @@ function ProfilePanel({
   saveProfile: (profile: CreatorProfile) => void;
   accountAddress: string;
   mediaCount: number;
-  addActivity: (item: Omit<ActivityItem, "id" | "at">) => void;
+  addActivity: (item: ActivityInput) => void;
 }) {
   const [draft, setDraft] = React.useState(profile);
 
@@ -4217,10 +4298,14 @@ function ProfilePanel({
 function ActivityPanel({
   activity,
   transactions,
+  accountAddress,
+  selectedNetwork,
   onNavigate,
 }: {
   activity: ActivityItem[];
   transactions: TransactionItem[];
+  accountAddress: string;
+  selectedNetwork: PaybyNetwork;
   onNavigate: (route: AppRoute) => void;
 }) {
   const [filter, setFilter] = React.useState<
@@ -4250,7 +4335,10 @@ function ActivityPanel({
         <div>
           <p className="muted">Recent actions</p>
           <h2>Activity feed</h2>
-          <span>Transaction proof, Shelby actions, share events, and local profile changes.</span>
+          <span>
+            Showing only activity for {accountAddress ? shortenAddress(accountAddress) : "the connected wallet"} on{" "}
+            {PAYBY_NETWORKS[selectedNetwork].label}.
+          </span>
         </div>
         <Activity size={24} />
       </div>

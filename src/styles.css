@@ -3504,6 +3504,74 @@ a {
   margin-top: var(--space-xl);
 }
 
+.publish-alert {
+  min-height: 68px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  border: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  margin-top: var(--space-lg);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 8%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 78%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.publish-alert svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.publish-alert div {
+  display: grid;
+  gap: 4px;
+}
+
+.publish-alert strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.publish-alert span {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.publish-alert.is-success {
+  border-color: color-mix(in oklch, var(--success) 38%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--success) 12%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 78%, transparent);
+}
+
+.publish-alert.is-success svg {
+  color: var(--success);
+}
+
+.publish-alert.is-danger {
+  border-color: color-mix(in oklch, var(--danger) 38%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--danger) 12%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 78%, transparent);
+}
+
+.publish-alert.is-danger svg {
+  color: var(--danger);
+}
+
+.publish-alert.is-warning {
+  border-color: color-mix(in oklch, var(--warning) 42%, var(--line));
+}
+
+.publish-alert.is-warning svg {
+  color: var(--warning);
+}
+
 .compact-button {
   min-height: 40px;
   padding: 0 13px;
