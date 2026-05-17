@@ -69,6 +69,7 @@ type RouteName =
   | "network"
   | "detail"
   | "share"
+  | "creator"
   | "profile"
   | "activity";
 type AppRoute = {
@@ -77,7 +78,7 @@ type AppRoute = {
   blobName?: string;
 };
 type ThemeName = "light" | "dark";
-type AppViewName = Exclude<RouteName, "landing" | "share">;
+type AppViewName = Exclude<RouteName, "landing" | "share" | "creator">;
 type VisibilityMode = "public" | "unlisted" | "private";
 type AccessMode = "free" | "allowlist" | "nft" | "paid" | "subscription";
 type PublishPhase =
@@ -168,6 +169,7 @@ type CreatorProfile = {
   bio: string;
   avatarUrl: string;
   website: string;
+  updatedAt?: number;
 };
 
 type ActivityItem = {
@@ -193,6 +195,11 @@ type PendingPublishItem = {
   updatedAt: number;
   transactionHash: string;
   error: string;
+};
+type RepublishDraft = {
+  metadata: MediaMetadata;
+  sourceBlobName: string;
+  createdAt: number;
 };
 
 type TransactionItem = {
@@ -244,6 +251,7 @@ type CreatorSalesSummary = {
   saleCount: number;
   revenue: string;
 };
+type ListingSalesSummary = CreatorSalesSummary;
 type ChainAccessProofState =
   | "unknown"
   | "checking"
@@ -262,6 +270,7 @@ const ACTIVITY_KEY = "payby-activity-v1";
 const PENDING_PUBLISH_KEY = "payby-pending-publishes-v1";
 const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
+const REPUBLISH_DRAFT_KEY = "payby-republish-draft-v1";
 const VAULT_PAGE_SIZE = 8;
 const ACTIVITY_PAGE_SIZE = 8;
 const ZERO_ADDRESS =
@@ -297,6 +306,13 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
         name: "share",
         owner: decodeURIComponent(owner),
         blobName: decodeURIComponent(nameParts.join("/")),
+      };
+    }
+    if (path.startsWith("/creator/")) {
+      const [, , owner = ""] = path.split("/");
+      return {
+        name: "creator",
+        owner: decodeURIComponent(owner),
       };
     }
     if (path.startsWith("/app/blob/")) {
@@ -336,6 +352,9 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
             nextRoute.blobName,
           )}`
         : "/";
+    const creatorPath = nextRoute.owner
+      ? `/creator/${encodeURIComponent(nextRoute.owner)}`
+      : "/";
     const paths: Record<RouteName, string> = {
       landing: "/",
       vault: "/app/vault",
@@ -344,6 +363,7 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       network: "/app/network",
       detail: detailPath,
       share: sharePath,
+      creator: creatorPath,
       profile: "/app/profile",
       activity: "/app/activity",
     };
@@ -588,6 +608,14 @@ function formatAssetUnits(value: string | number, currency: "APT" | "SHELBYUSD" 
   }).format(amount)} ${currency}`;
 }
 
+function getPaymentAssetAddress(
+  selectedNetwork: PaybyNetwork,
+  currency: "APT" | "SHELBYUSD",
+) {
+  const network = PAYBY_NETWORKS[selectedNetwork];
+  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
+}
+
 function userFacingError(error: unknown, fallback: string) {
   const raw = error instanceof Error ? error.message : "";
   const message = raw || fallback;
@@ -636,6 +664,9 @@ function marketplaceFunction(
     | "get_purchase_record_count"
     | "get_purchase_record"
     | "get_sales_summary"
+    | "get_listing_sales_summary"
+    | "get_creator_profile"
+    | "upsert_creator_profile"
     | "upsert_listing_metadata"
     | "upsert_listing_metadata_for_owner"
     | "upsert_listing_with_metadata"
@@ -919,6 +950,44 @@ async function readCreatorSalesSummary(
   };
 }
 
+async function readListingSalesSummary(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+  blobName: string,
+): Promise<ListingSalesSummary | null> {
+  const functionId = marketplaceFunction(selectedNetwork, "get_listing_sales_summary");
+  if (!functionId || !owner || !blobName) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [
+    owner,
+    blobName,
+  ]);
+  return {
+    saleCount: Number(data[0] ?? 0),
+    revenue: data[1]?.toString() ?? "0",
+  };
+}
+
+async function readCreatorProfile(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+): Promise<CreatorProfile | null> {
+  const functionId = marketplaceFunction(selectedNetwork, "get_creator_profile");
+  if (!functionId || !owner) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [owner]);
+  const [displayName, handle, bio, avatarUrl, website, updatedAtSecs, found] = data;
+  if (!found) return null;
+  return {
+    displayName: displayName?.toString() || "Payby Creator",
+    handle: handle?.toString() || "payby",
+    bio: bio?.toString() || "Premium media publishing on Shelby and Aptos.",
+    avatarUrl: avatarUrl?.toString() || "",
+    website: website?.toString() || "",
+    updatedAt: Number(updatedAtSecs ?? 0) * 1000,
+  };
+}
+
 async function readChainListingCount(selectedNetwork: PaybyNetwork) {
   const functionId = marketplaceFunction(selectedNetwork, "get_listing_count");
   if (!functionId) return null;
@@ -1030,6 +1099,7 @@ function getAccessRegistryBlocker(
   selectedNetwork: PaybyNetwork,
   accessMode: AccessMode,
   price = "",
+  currency: "APT" | "SHELBYUSD" = "APT",
 ) {
   const network = PAYBY_NETWORKS[selectedNetwork];
   if (!CHAIN_SUPPORTED_ACCESS_MODES.has(accessMode)) {
@@ -1038,8 +1108,8 @@ function getAccessRegistryBlocker(
   if (!network.marketplaceContractAddress) {
     return "Set the Payby marketplace contract address before publishing Web3-native media.";
   }
-  if (accessMode === "paid" && !network.paymentAssetMetadataAddress) {
-    return "Set the payment asset metadata address before publishing paid unlocks.";
+  if (accessMode === "paid" && !getPaymentAssetAddress(selectedNetwork, currency)) {
+    return `Set the ${currency} payment asset metadata address before publishing paid unlocks.`;
   }
   if (accessMode === "paid" && parseAssetUnits(price) <= 0) {
     return "Set a paid unlock price greater than 0 before registering on-chain access.";
@@ -1762,6 +1832,19 @@ function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
     );
   }
 
+  if (route.name === "creator") {
+    return (
+      <PublicCreatorPage
+        route={route}
+        selectedNetwork={selectedNetwork}
+        metadataStore={metadataStore}
+        fallbackProfile={profileStore.profile}
+        onOpenApp={() => navigate({ name: "vault" })}
+        onNavigate={navigate}
+      />
+    );
+  }
+
   return route.name === "landing" ? (
     <LandingPage
       theme={theme}
@@ -2255,7 +2338,9 @@ function VaultApp({
               profile={profileStore.profile}
               saveProfile={profileStore.saveProfile}
               accountAddress={accountAddress}
+              selectedNetwork={selectedNetwork}
               mediaCount={Object.keys(metadataStore.metadata).length}
+              onNavigate={onNavigate}
               addActivity={activityFeed.addActivity}
             />
           ) : null}
@@ -2571,11 +2656,35 @@ function UploadPanel({
   const [registryRetryItems, setRegistryRetryItems] = React.useState<MediaMetadata[]>(
     [],
   );
+  const [republishDraft, setRepublishDraft] = React.useState<RepublishDraft | null>(
+    null,
+  );
   const activePublishRef = React.useRef({
     pendingIds: [] as string[],
     hash: "",
     mediaItems: [] as MediaMetadata[],
   });
+
+  React.useEffect(() => {
+    const draft = readJson<RepublishDraft | null>(REPUBLISH_DRAFT_KEY, null);
+    if (!draft || draft.metadata.network !== selectedNetwork) return;
+
+    setRepublishDraft(draft);
+    setTitle(draft.metadata.title);
+    setDescription(draft.metadata.description);
+    setCategory(draft.metadata.category);
+    setTags(draft.metadata.tags.join(", "));
+    setCoverUrl(draft.metadata.coverUrl);
+    setVisibility(draft.metadata.visibility);
+    setAccessMode(draft.metadata.accessMode);
+    setPrice(draft.metadata.price);
+    setCurrency(draft.metadata.currency);
+    setAllowlist(draft.metadata.allowlist);
+    setRetentionDays(30);
+    setStatusMessage(
+      "Renewal draft loaded. Select the media file again to publish a fresh Shelby blob.",
+    );
+  }, [selectedNetwork]);
 
   const uploadBlobs = useUploadBlobs({
     client: shelbyClient,
@@ -2648,7 +2757,9 @@ function UploadPanel({
     selectedNetwork,
     accessMode,
     price,
+    currency,
   );
+  const selectedPaymentAsset = getPaymentAssetAddress(selectedNetwork, currency);
   const accessRegistryReady = !accessRegistryBlocker;
   const canUpload =
     connected &&
@@ -2715,7 +2826,7 @@ function UploadPanel({
               item.title,
               ACCESS_POLICY_IDS[item.accessMode],
               parseAssetUnits(item.price),
-              PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
+              getPaymentAssetAddress(selectedNetwork, item.currency) ||
                 ZERO_ADDRESS,
               parseAllowlistAddresses(item.allowlist),
               item.metadataUri || "",
@@ -2765,6 +2876,8 @@ function UploadPanel({
 
     setPublishPhase("success");
     setRegistryRetryItems([]);
+    localStorage.removeItem(REPUBLISH_DRAFT_KEY);
+    setRepublishDraft(null);
     pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
       status: "indexing",
       error: "",
@@ -2991,6 +3104,32 @@ function UploadPanel({
           <UploadCloud size={24} />
         </div>
 
+        {republishDraft ? (
+          <div className="library-source-banner renewal-draft-banner">
+            <Clock size={18} />
+            <div>
+              <strong>Retention renewal draft</strong>
+              <p>
+                Payby prefilled the policy from {republishDraft.sourceBlobName}.
+                Select the replacement file to publish a fresh Shelby blob and
+                write a new on-chain listing.
+              </p>
+            </div>
+            <button
+              className="button button-secondary compact-button"
+              type="button"
+              onClick={() => {
+                localStorage.removeItem(REPUBLISH_DRAFT_KEY);
+                setRepublishDraft(null);
+                setStatusMessage("");
+              }}
+            >
+              Clear draft
+              <X size={15} />
+            </button>
+          </div>
+        ) : null}
+
         <label className="dropzone premium-dropzone">
           <input
             type="file"
@@ -3100,6 +3239,18 @@ function UploadPanel({
               <option value="SHELBYUSD">ShelbyUSD</option>
             </select>
           </label>
+          {accessMode === "paid" ? (
+            <div className="payment-asset-card form-wide">
+              <CreditCard size={18} />
+              <div>
+                <span>{currency} payment asset</span>
+                <code>{selectedPaymentAsset || "Not configured"}</code>
+              </div>
+              <strong>
+                {price ? formatAssetUnits(parseAssetUnits(price), currency) : `0 ${currency}`}
+              </strong>
+            </div>
+          ) : null}
           <label className="form-wide">
             <span>Allowlist wallets or NFT collection</span>
             <textarea
@@ -4071,6 +4222,10 @@ function MediaDetailPage({
     enabled: Boolean(owner && blobName),
   });
   const [chainListing, setChainListing] = React.useState<ChainListing | null>(null);
+  const [listingSales, setListingSales] = React.useState<ListingSalesSummary>({
+    saleCount: 0,
+    revenue: "0",
+  });
   const [chainListingState, setChainListingState] = React.useState<
     "checking" | "found" | "missing" | "error" | "unconfigured"
   >("checking");
@@ -4155,6 +4310,26 @@ function MediaDetailPage({
     };
   }, [blobName, selectedNetwork]);
 
+  React.useEffect(() => {
+    if (!owner || !blobName || !PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress) {
+      setListingSales({ saleCount: 0, revenue: "0" });
+      return;
+    }
+
+    let cancelled = false;
+    void readListingSalesSummary(selectedNetwork, owner, blobName)
+      .then((summary) => {
+        if (!cancelled) setListingSales(summary ?? { saleCount: 0, revenue: "0" });
+      })
+      .catch(() => {
+        if (!cancelled) setListingSales({ saleCount: 0, revenue: "0" });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blobName, owner, selectedNetwork]);
+
   async function repairRegistry() {
     if (!metadata || !account) {
       setActionMessage("Connect the creator wallet before repairing registry.");
@@ -4189,7 +4364,7 @@ function MediaDetailPage({
             metadata.title || blobName,
             ACCESS_POLICY_IDS[metadata.accessMode],
             parseAssetUnits(metadata.price),
-            PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
+            getPaymentAssetAddress(selectedNetwork, metadata.currency) ||
               ZERO_ADDRESS,
             parseAllowlistAddresses(metadata.allowlist),
             metadata.metadataUri || "",
@@ -4264,7 +4439,7 @@ function MediaDetailPage({
             nextMetadata.title || blobName,
             ACCESS_POLICY_IDS.allowlist,
             parseAssetUnits(nextMetadata.price),
-            PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
+            getPaymentAssetAddress(selectedNetwork, nextMetadata.currency) ||
               ZERO_ADDRESS,
             parseAllowlistAddresses(nextMetadata.allowlist),
             nextMetadata.metadataUri || "",
@@ -4320,7 +4495,16 @@ function MediaDetailPage({
           <button
             className="button button-secondary compact-button"
             type="button"
-            onClick={() => onNavigate({ name: "publish" })}
+            onClick={() => {
+              if (metadata) {
+                writeJson<RepublishDraft>(REPUBLISH_DRAFT_KEY, {
+                  metadata,
+                  sourceBlobName: blobName,
+                  createdAt: Date.now(),
+                });
+              }
+              onNavigate({ name: "publish" });
+            }}
           >
             Re-publish flow
             <ArrowRight size={15} />
@@ -4337,6 +4521,8 @@ function MediaDetailPage({
           />
           <DetailItem label="Visibility" value={metadata?.visibility || "Unknown"} />
           <DetailItem label="Access" value={accessPolicy} />
+          <DetailItem label="Sales" value={`${listingSales.saleCount}`} />
+          <DetailItem label="Revenue" value={formatAssetUnits(listingSales.revenue, metadata?.currency ?? "APT")} />
           <DetailItem label="Shelby route" value={PAYBY_NETWORKS[selectedNetwork].label} />
           <DetailItem label="Registry cache" value={registryState} />
           <DetailItem label="Chain policy" value={chainRegistryLabel} />
@@ -4637,16 +4823,120 @@ function ProfilePanel({
   profile,
   saveProfile,
   accountAddress,
+  selectedNetwork,
   mediaCount,
+  onNavigate,
   addActivity,
 }: {
   profile: CreatorProfile;
   saveProfile: (profile: CreatorProfile) => void;
   accountAddress: string;
+  selectedNetwork: PaybyNetwork;
   mediaCount: number;
+  onNavigate: (route: AppRoute) => void;
   addActivity: (item: ActivityInput) => void;
 }) {
+  const {
+    account,
+    network: walletNetwork,
+    changeNetwork,
+    signAndSubmitTransaction,
+  } = useWallet();
   const [draft, setDraft] = React.useState(profile);
+  const [profileMessage, setProfileMessage] = React.useState("");
+  const [profileSaving, setProfileSaving] = React.useState(false);
+  const [chainProfile, setChainProfile] = React.useState<CreatorProfile | null>(null);
+  const walletNetworkAligned = isWalletNetworkAligned(
+    walletNetwork,
+    selectedNetwork,
+  );
+
+  React.useEffect(() => {
+    setDraft(profile);
+  }, [profile]);
+
+  React.useEffect(() => {
+    if (!accountAddress || !PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress) {
+      setChainProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+    void readCreatorProfile(selectedNetwork, accountAddress)
+      .then((nextProfile) => {
+        if (cancelled) return;
+        setChainProfile(nextProfile);
+        if (nextProfile) {
+          saveProfile(nextProfile);
+          setDraft(nextProfile);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChainProfile(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountAddress, saveProfile, selectedNetwork]);
+
+  async function saveProfileOnChain() {
+    saveProfile({ ...draft, updatedAt: Date.now() });
+    if (!account) {
+      setProfileMessage("Local profile saved. Connect wallet to commit it on-chain.");
+      return;
+    }
+    if (!walletNetworkAligned) {
+      await requestWalletNetworkChange({
+        changeNetwork,
+        network: walletNetwork,
+        selectedNetwork,
+        setStatusMessage: setProfileMessage,
+      });
+      return;
+    }
+    const functionId = marketplaceFunction(selectedNetwork, "upsert_creator_profile");
+    if (!functionId) {
+      setProfileMessage("Marketplace contract is not configured for profile commits.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileMessage("Confirm profile commit in your wallet.");
+    try {
+      const response = await signAndSubmitTransaction({
+        data: {
+          function: functionId,
+          functionArguments: [
+            draft.displayName.trim() || "Payby Creator",
+            draft.handle.trim() || "payby",
+            draft.bio.trim(),
+            draft.avatarUrl.trim(),
+            draft.website.trim(),
+          ],
+        },
+      });
+      const hash = getTransactionHash(response);
+      setProfileMessage("Profile transaction submitted. Waiting for finality.");
+      await waitForTransaction(selectedNetwork, hash);
+      const committed = await readCreatorProfile(selectedNetwork, accountAddress);
+      if (committed) {
+        setChainProfile(committed);
+        saveProfile(committed);
+        setDraft(committed);
+      }
+      setProfileMessage("Creator profile committed on-chain.");
+      addActivity({
+        type: "metadata",
+        label: "Committed creator profile",
+        detail: draft.handle,
+      });
+    } catch (error) {
+      setProfileMessage(userFacingError(error, "Profile commit failed."));
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   return (
     <section className="workspace-layout profile-layout">
@@ -4703,18 +4993,13 @@ function ProfilePanel({
         <button
           className="button button-primary publish-button"
           type="button"
-          onClick={() => {
-            saveProfile(draft);
-            addActivity({
-              type: "metadata",
-              label: "Updated creator profile",
-              detail: draft.displayName,
-            });
-          }}
+          disabled={profileSaving}
+          onClick={saveProfileOnChain}
         >
           <Check size={17} />
-          Save profile
+          {profileSaving ? "Committing profile..." : "Save profile"}
         </button>
+        {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
       </div>
       <aside className="support-panel profile-card-preview">
         <div className="avatar-preview">
@@ -4725,6 +5010,25 @@ function ProfilePanel({
         <p>{profile.bio}</p>
         <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
         <DetailItem label="Registered media" value={`${mediaCount}`} />
+        <DetailItem
+          label="On-chain profile"
+          value={chainProfile ? "Committed" : "Not committed"}
+        />
+        {chainProfile?.updatedAt ? (
+          <DetailItem
+            label="Updated"
+            value={new Date(chainProfile.updatedAt).toLocaleDateString()}
+          />
+        ) : null}
+        <button
+          className="button button-secondary"
+          type="button"
+          disabled={!accountAddress}
+          onClick={() => onNavigate({ name: "creator", owner: accountAddress })}
+        >
+          <ExternalLink size={17} />
+          Public creator page
+        </button>
       </aside>
     </section>
   );
@@ -5202,6 +5506,14 @@ function NetworkPanel({
       label: "Payment Asset",
       value: network.paymentAssetMetadataAddress || "Not configured",
     },
+    {
+      label: "APT Payment Asset",
+      value: network.paymentAssets.APT || "Not configured",
+    },
+    {
+      label: "ShelbyUSD Payment Asset",
+      value: network.paymentAssets.SHELBYUSD || "Not configured",
+    },
   ];
   const proofRows = [
     {
@@ -5425,6 +5737,174 @@ function PurchaseReceiptCard({ receipt }: { receipt: PurchaseReceipt }) {
   );
 }
 
+function PublicCreatorPage({
+  route,
+  selectedNetwork,
+  metadataStore,
+  fallbackProfile,
+  onOpenApp,
+  onNavigate,
+}: {
+  route: AppRoute;
+  selectedNetwork: PaybyNetwork;
+  metadataStore: ReturnType<typeof useStoredMetadata>;
+  fallbackProfile: CreatorProfile;
+  onOpenApp: () => void;
+  onNavigate: (route: AppRoute) => void;
+}) {
+  const owner = route.owner ?? "";
+  const [profile, setProfile] = React.useState<CreatorProfile>({
+    displayName: fallbackProfile.displayName || "Payby Creator",
+    handle: fallbackProfile.handle || "payby",
+    bio: fallbackProfile.bio || "Creator media published through Shelby and Aptos.",
+    avatarUrl: fallbackProfile.avatarUrl || "",
+    website: fallbackProfile.website || "",
+  });
+  const [items, setItems] = React.useState<MediaMetadata[]>([]);
+  const [loadState, setLoadState] = React.useState<
+    "checking" | "ready" | "empty" | "error"
+  >("checking");
+  const [creatorSales, setCreatorSales] = React.useState<CreatorSalesSummary>({
+    saleCount: 0,
+    revenue: "0",
+  });
+  const storedMetadata = metadataStore.metadata;
+
+  React.useEffect(() => {
+    if (!owner) {
+      setLoadState("empty");
+      return;
+    }
+
+    let cancelled = false;
+    setLoadState("checking");
+    void Promise.all([
+      readCreatorProfile(selectedNetwork, owner).catch(() => null),
+      readCreatorChainListings(selectedNetwork, owner).catch(() => []),
+      readCreatorSalesSummary(selectedNetwork, owner).catch(() => null),
+    ])
+      .then(async ([chainProfile, listings, sales]) => {
+        if (cancelled) return;
+        if (chainProfile) setProfile(chainProfile);
+        if (sales) setCreatorSales(sales);
+
+        const recovered = (
+          await Promise.all(
+            listings
+              .filter(({ listing }) => listing.active)
+              .map(async ({ blobName, listing }) => {
+                const cached =
+                  storedMetadata[createMediaKey(owner, blobName)];
+                const metadata =
+                  cached ??
+                  (await fetchCommittedMetadata(
+                    selectedNetwork,
+                    owner,
+                    blobName,
+                    listing,
+                  ).catch(() => null)) ??
+                  metadataFromChainListing(selectedNetwork, blobName, listing);
+                return metadata.visibility === "private" ? null : metadata;
+              }),
+          )
+        ).filter((item): item is MediaMetadata => Boolean(item));
+
+        setItems(recovered);
+        setLoadState(recovered.length > 0 ? "ready" : "empty");
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [owner, selectedNetwork, storedMetadata]);
+
+  return (
+    <main className="public-page creator-public-page">
+      <header className="landing-nav public-nav">
+        <button className="brand-mark" onClick={onOpenApp} type="button" aria-label="Open Payby app">
+          <PaybyLogo />
+        </button>
+        <div className="public-nav-actions">
+          <WalletControl />
+          <button className="button button-secondary" onClick={onOpenApp}>
+            Open dApp
+            <ArrowRight size={17} />
+          </button>
+        </div>
+      </header>
+
+      <section className="public-creator-shell">
+        <div className="panel public-creator-hero">
+          <div className="avatar-preview">
+            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <User size={34} />}
+          </div>
+          <div>
+            <p className="muted">Payby creator</p>
+            <h1>{profile.displayName || shortenAddress(owner)}</h1>
+            <span>@{profile.handle || shortenAddress(owner)}</span>
+            <p>{profile.bio || "Creator media published through Shelby and Aptos."}</p>
+          </div>
+          <div className="public-creator-stats">
+            <div>
+              <span>Media</span>
+              <strong>{items.length}</strong>
+            </div>
+            <div>
+              <span>Sales</span>
+              <strong>{creatorSales.saleCount}</strong>
+            </div>
+            <div>
+              <span>Revenue</span>
+              <strong>{formatAssetUnits(creatorSales.revenue)}</strong>
+            </div>
+          </div>
+        </div>
+
+        {loadState === "checking" ? (
+          <EmptyState title="Loading creator vault" body="Reading creator listings from the Payby marketplace registry." />
+        ) : loadState === "error" ? (
+          <EmptyState title="Could not load creator" body="The active fullnode did not return this creator registry." />
+        ) : items.length === 0 ? (
+          <EmptyState title="No public media" body="This creator has no public or unlisted Payby media on the active route." />
+        ) : (
+          <ul className="public-creator-grid">
+            {items.map((item) => (
+              <li key={createMediaKey(item.owner, item.blobName)}>
+                <div>
+                  <span>{item.category}</span>
+                  <strong>{item.title}</strong>
+                  <p>{item.description || "Shelby media with Aptos access proof."}</p>
+                </div>
+                <div className="public-creator-card-meta">
+                  <span>{accessModeLabel(item.accessMode)}</span>
+                  <span>{item.accessMode === "paid" ? `${item.price} ${item.currency}` : item.visibility}</span>
+                </div>
+                <button
+                  className="button button-primary compact-button"
+                  type="button"
+                  onClick={() =>
+                    onNavigate({
+                      name: "share",
+                      owner: item.owner,
+                      blobName: item.blobName,
+                    })
+                  }
+                >
+                  Open media
+                  <ArrowRight size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
+  );
+}
+
 function PublicMediaPage({
   route,
   selectedNetwork,
@@ -5449,6 +5929,7 @@ function PublicMediaPage({
   const [committedMetadata, setCommittedMetadata] =
     React.useState<MediaMetadata | null>(null);
   const metadata = committedMetadata ?? cachedMetadata;
+  const [publicProfile, setPublicProfile] = React.useState(profile);
   const [unlockState, setUnlockState] = React.useState<UnlockState>("idle");
   const [accessToken, setAccessToken] = React.useState("");
   const [unlockMessage, setUnlockMessage] = React.useState("");
@@ -5554,6 +6035,26 @@ function PublicMediaPage({
       cancelled = true;
     };
   }, [blobName, marketplaceConfigured, owner, selectedNetwork]);
+
+  React.useEffect(() => {
+    if (!owner || !marketplaceConfigured) {
+      setPublicProfile(profile);
+      return;
+    }
+
+    let cancelled = false;
+    void readCreatorProfile(selectedNetwork, owner)
+      .then((nextProfile) => {
+        if (!cancelled) setPublicProfile(nextProfile ?? profile);
+      })
+      .catch(() => {
+        if (!cancelled) setPublicProfile(profile);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [marketplaceConfigured, owner, profile, selectedNetwork]);
 
   React.useEffect(() => {
     if (!chainListing?.found || !chainListing.metadataUri || !chainListing.metadataHash) {
@@ -5923,11 +6424,22 @@ function PublicMediaPage({
 
         <aside className="support-panel public-sidebar">
           <div className="avatar-preview">
-            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <User size={34} />}
+            {publicProfile.avatarUrl ? <img src={publicProfile.avatarUrl} alt="" /> : <User size={34} />}
           </div>
-          <strong>{profile.displayName}</strong>
-          <span>@{profile.handle}</span>
-          <p>{profile.bio}</p>
+          <strong>{publicProfile.displayName}</strong>
+          <span>@{publicProfile.handle}</span>
+          <p>{publicProfile.bio}</p>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => {
+              window.history.pushState({}, "", `/creator/${encodeURIComponent(owner)}`);
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
+          >
+            <User size={17} />
+            View creator vault
+          </button>
           <div className="network-mini-card">
             <span>Access policy</span>
             <strong>{accessLabel}</strong>

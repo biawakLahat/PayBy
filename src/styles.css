@@ -3996,6 +3996,46 @@ a {
   grid-column: 1 / -1;
 }
 
+.payment-asset-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--line));
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 6%, transparent), transparent 48%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-inset);
+}
+
+.payment-asset-card svg {
+  color: var(--accent);
+}
+
+.payment-asset-card div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.payment-asset-card code {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-asset-card strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
 .detail-layout,
 .profile-layout {
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -4943,6 +4983,121 @@ a {
     var(--bg);
 }
 
+.creator-public-page {
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 34%),
+    radial-gradient(circle at 88% 8%, color-mix(in oklch, var(--cool) 9%, transparent), transparent 30%),
+    var(--bg);
+}
+
+.public-creator-shell {
+  width: min(1180px, calc(100% - 40px));
+  display: grid;
+  gap: var(--space-xl);
+  margin: 0 auto;
+  padding: 112px 0 var(--space-3xl);
+}
+
+.public-creator-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: clamp(24px, 4vw, 44px);
+}
+
+.public-creator-hero h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  line-height: 0.95;
+}
+
+.public-creator-hero p {
+  max-width: 66ch;
+  margin: var(--space-sm) 0 0;
+  color: var(--muted);
+}
+
+.public-creator-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: var(--space-sm);
+}
+
+.public-creator-stats div,
+.public-creator-grid li {
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3.5%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
+  box-shadow: var(--shadow-inset);
+}
+
+.public-creator-stats div {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+}
+
+.public-creator-stats span,
+.public-creator-card-meta span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.public-creator-stats strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.public-creator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-creator-grid li {
+  display: grid;
+  align-content: space-between;
+  gap: var(--space-lg);
+  min-height: 260px;
+  padding: var(--space-lg);
+}
+
+.public-creator-grid li strong {
+  display: block;
+  margin-top: var(--space-xs);
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.public-creator-grid li p {
+  margin: var(--space-sm) 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.public-creator-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.public-creator-card-meta span {
+  border: 1px solid color-mix(in oklch, var(--accent) 18%, var(--line));
+  border-radius: 999px;
+  padding: 7px 10px;
+}
+
 .public-media-shell {
   width: min(100%, 1760px);
   display: grid;
@@ -5329,9 +5484,14 @@ a {
   .detail-layout,
   .profile-layout,
   .public-media-shell,
+  .public-creator-hero,
   .media-proof-grid,
   .integration-proof-grid {
     grid-template-columns: 1fr;
+  }
+
+  .public-creator-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .support-panel {
@@ -5462,6 +5622,14 @@ a {
   .public-media-shell {
     padding-right: var(--space-lg);
     padding-left: var(--space-lg);
+  }
+
+  .public-creator-shell {
+    width: calc(100% - 24px);
+  }
+
+  .public-creator-stats {
+    grid-template-columns: 1fr;
   }
 
   .hero-actions,

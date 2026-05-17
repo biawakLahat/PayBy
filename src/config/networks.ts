@@ -15,6 +15,7 @@ export type PaybyNetworkConfig = {
   contractAddress: string;
   marketplaceContractAddress: string;
   paymentAssetMetadataAddress: string;
+  paymentAssets: Record<"APT" | "SHELBYUSD", string>;
   explorerNetwork: string;
   permanenceNote: string;
 };
@@ -40,6 +41,20 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
       import.meta.env.VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA ||
       import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
       "",
+    paymentAssets: {
+      APT:
+        import.meta.env.VITE_PAYBY_SHELBYNET_APT_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_APT_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
+        "",
+      SHELBYUSD:
+        import.meta.env.VITE_PAYBY_SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
+        "",
+    },
     explorerNetwork: "shelbynet",
     permanenceNote: "Prototype network. Data may be wiped roughly weekly.",
   },
@@ -62,6 +77,20 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
       import.meta.env.VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA ||
       import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
       "",
+    paymentAssets: {
+      APT:
+        import.meta.env.VITE_PAYBY_TESTNET_APT_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_APT_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
+        "",
+      SHELBYUSD:
+        import.meta.env.VITE_PAYBY_TESTNET_SHELBYUSD_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA ||
+        import.meta.env.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
+        "",
+    },
     explorerNetwork: "testnet",
     permanenceNote: "Shelby public testnet integration.",
   },

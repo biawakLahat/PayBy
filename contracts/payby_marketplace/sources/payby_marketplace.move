@@ -100,6 +100,27 @@ module payby_marketplace::payby_marketplace {
         owners: Table<address, OwnerSalesStats>,
     }
 
+    struct OwnerListingSales has store {
+        listings: Table<String, OwnerSalesStats>,
+    }
+
+    struct ListingSalesRegistry has key {
+        owners: Table<address, OwnerListingSales>,
+    }
+
+    struct CreatorProfile has store, copy, drop {
+        display_name: String,
+        handle: String,
+        bio: String,
+        avatar_url: String,
+        website: String,
+        updated_at_secs: u64,
+    }
+
+    struct ProfileRegistry has key {
+        profiles: Table<address, CreatorProfile>,
+    }
+
     #[event]
     struct ListingCreated has drop, store {
         owner: address,
@@ -128,6 +149,12 @@ module payby_marketplace::payby_marketplace {
         blob_name: String,
         metadata_uri: String,
         metadata_hash: String,
+    }
+
+    #[event]
+    struct CreatorProfileUpdated has drop, store {
+        owner: address,
+        handle: String,
     }
 
     public entry fun initialize(admin: &signer) {
@@ -175,6 +202,18 @@ module payby_marketplace::payby_marketplace {
         if (!exists<SalesRegistry>(admin_addr)) {
             move_to(admin, SalesRegistry {
                 owners: table::new<address, OwnerSalesStats>(),
+            });
+        };
+
+        if (!exists<ListingSalesRegistry>(admin_addr)) {
+            move_to(admin, ListingSalesRegistry {
+                owners: table::new<address, OwnerListingSales>(),
+            });
+        };
+
+        if (!exists<ProfileRegistry>(admin_addr)) {
+            move_to(admin, ProfileRegistry {
+                profiles: table::new<address, CreatorProfile>(),
             });
         };
     }
@@ -295,6 +334,43 @@ module payby_marketplace::payby_marketplace {
         upsert_owner_metadata_internal(owner_addr, blob_name, metadata_uri, metadata_hash);
     }
 
+    public entry fun upsert_creator_profile(
+        owner: &signer,
+        display_name: String,
+        handle: String,
+        bio: String,
+        avatar_url: String,
+        website: String,
+    ) acquires ProfileRegistry {
+        let owner_addr = signer::address_of(owner);
+        let registry = borrow_global_mut<ProfileRegistry>(@payby_marketplace);
+        let profile = CreatorProfile {
+            display_name,
+            handle,
+            bio,
+            avatar_url,
+            website,
+            updated_at_secs: timestamp::now_seconds(),
+        };
+
+        if (table::contains(&registry.profiles, owner_addr)) {
+            let current = table::borrow_mut(&mut registry.profiles, owner_addr);
+            current.display_name = profile.display_name;
+            current.handle = profile.handle;
+            current.bio = profile.bio;
+            current.avatar_url = profile.avatar_url;
+            current.website = profile.website;
+            current.updated_at_secs = profile.updated_at_secs;
+        } else {
+            table::add(&mut registry.profiles, owner_addr, profile);
+        };
+
+        event::emit(CreatorProfileUpdated {
+            owner: owner_addr,
+            handle,
+        });
+    }
+
     public entry fun create_listing(
         owner: &signer,
         blob_name: String,
@@ -358,7 +434,7 @@ module payby_marketplace::payby_marketplace {
     public entry fun purchase(
         buyer: &signer,
         blob_name: String,
-    ) acquires Registry, SalesRegistry {
+    ) acquires Registry, SalesRegistry, ListingSalesRegistry {
         let registry = borrow_global_mut<Registry>(@payby_marketplace);
         assert!(table::contains(&registry.listings, blob_name), E_LISTING_NOT_FOUND);
         let listing = table::borrow(&registry.listings, blob_name);
@@ -384,7 +460,7 @@ module payby_marketplace::payby_marketplace {
         );
 
         vector::push_back(purchases, blob_name);
-        record_owner_sale(owner, price);
+        record_owner_sale(owner, blob_name, price);
 
         event::emit(ListingPurchased {
             buyer: buyer_addr,
@@ -398,7 +474,7 @@ module payby_marketplace::payby_marketplace {
         buyer: &signer,
         owner: address,
         blob_name: String,
-    ) acquires OwnerRegistry, PurchaseRegistry, PurchaseIndex, SalesRegistry {
+    ) acquires OwnerRegistry, PurchaseRegistry, PurchaseIndex, SalesRegistry, ListingSalesRegistry {
         let owner_registry = borrow_global<OwnerRegistry>(@payby_marketplace);
         assert!(table::contains(&owner_registry.owners, owner), E_LISTING_NOT_FOUND);
         let owner_listings = table::borrow(&owner_registry.owners, owner);
@@ -432,7 +508,7 @@ module payby_marketplace::payby_marketplace {
             price,
             payment_metadata,
         );
-        record_owner_sale(owner, price);
+        record_owner_sale(owner, blob_name, price);
 
         event::emit(ListingPurchased {
             buyer: buyer_addr,
@@ -706,6 +782,70 @@ module payby_marketplace::payby_marketplace {
 
         let stats = table::borrow(&registry.owners, owner);
         (stats.sale_count, stats.revenue)
+    }
+
+    #[view]
+    public fun get_listing_sales_summary(
+        owner: address,
+        blob_name: String,
+    ): (u64, u64) acquires ListingSalesRegistry {
+        if (!exists<ListingSalesRegistry>(@payby_marketplace)) {
+            return (0, 0)
+        };
+
+        let registry = borrow_global<ListingSalesRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return (0, 0)
+        };
+
+        let owner_sales = table::borrow(&registry.owners, owner);
+        if (!table::contains(&owner_sales.listings, blob_name)) {
+            return (0, 0)
+        };
+
+        let stats = table::borrow(&owner_sales.listings, blob_name);
+        (stats.sale_count, stats.revenue)
+    }
+
+    #[view]
+    public fun get_creator_profile(
+        owner: address,
+    ): (String, String, String, String, String, u64, bool) acquires ProfileRegistry {
+        if (!exists<ProfileRegistry>(@payby_marketplace)) {
+            return (
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                0,
+                false,
+            )
+        };
+
+        let registry = borrow_global<ProfileRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.profiles, owner)) {
+            return (
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                0,
+                false,
+            )
+        };
+
+        let profile = table::borrow(&registry.profiles, owner);
+        (
+            profile.display_name,
+            profile.handle,
+            profile.bio,
+            profile.avatar_url,
+            profile.website,
+            profile.updated_at_secs,
+            true,
+        )
     }
 
     #[view]
@@ -1034,7 +1174,11 @@ module payby_marketplace::payby_marketplace {
         });
     }
 
-    fun record_owner_sale(owner: address, price: u64) acquires SalesRegistry {
+    fun record_owner_sale(
+        owner: address,
+        blob_name: String,
+        price: u64,
+    ) acquires SalesRegistry, ListingSalesRegistry {
         let registry = borrow_global_mut<SalesRegistry>(@payby_marketplace);
         if (table::contains(&registry.owners, owner)) {
             let stats = table::borrow_mut(&mut registry.owners, owner);
@@ -1042,6 +1186,25 @@ module payby_marketplace::payby_marketplace {
             stats.revenue = stats.revenue + price;
         } else {
             table::add(&mut registry.owners, owner, OwnerSalesStats {
+                sale_count: 1,
+                revenue: price,
+            });
+        };
+
+        let listing_registry = borrow_global_mut<ListingSalesRegistry>(@payby_marketplace);
+        if (!table::contains(&listing_registry.owners, owner)) {
+            table::add(&mut listing_registry.owners, owner, OwnerListingSales {
+                listings: table::new<String, OwnerSalesStats>(),
+            });
+        };
+
+        let owner_sales = table::borrow_mut(&mut listing_registry.owners, owner);
+        if (table::contains(&owner_sales.listings, blob_name)) {
+            let stats = table::borrow_mut(&mut owner_sales.listings, blob_name);
+            stats.sale_count = stats.sale_count + 1;
+            stats.revenue = stats.revenue + price;
+        } else {
+            table::add(&mut owner_sales.listings, blob_name, OwnerSalesStats {
                 sale_count: 1,
                 revenue: price,
             });

@@ -105,6 +105,11 @@ async function checkNetwork([key, network]) {
     },
     { functionName: "get_purchase_record_count", args: [probeOwner] },
     { functionName: "get_sales_summary", args: [probeOwner] },
+    {
+      functionName: "get_listing_sales_summary",
+      args: [probeOwner, "__payby_readiness_probe__"],
+    },
+    { functionName: "get_creator_profile", args: [probeOwner] },
   ];
 
   for (const { functionName, args } of checks) {

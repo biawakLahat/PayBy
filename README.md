@@ -16,6 +16,8 @@ Core workflows:
 - Support free, paid, private, and allowlist-oriented media policies.
 - Transfer paid unlock payments to the creator and record buyer purchase proofs on Aptos.
 - Keep vault, activity, and library views scoped to the connected wallet.
+- Publish an on-chain creator profile for public creator pages.
+- Surface creator sales, listing-level sales, and buyer purchase history from the Move registry.
 - Operate across Shelbynet and Shelby Testnet routes.
 
 Current retrieval mode is direct Shelby retrieval while Shelby Early Access is pending. The Move registry is the durable source for listing ownership, access policy, metadata commitments, and purchase proofs.
@@ -79,12 +81,15 @@ The registry stores:
 - metadata URI and metadata hash commitments
 - buyer purchase records
 - creator sales and revenue summary
+- listing-level sales and revenue summary
+- creator profile data
 
 Important entry functions:
 
 - `initialize`
 - `upsert_listing_for_owner_with_metadata`
 - `purchase_from`
+- `upsert_creator_profile`
 - `delist_for_owner`
 
 Important view functions:
@@ -97,6 +102,8 @@ Important view functions:
 - `get_purchase_record_count`
 - `get_purchase_record`
 - `get_sales_summary`
+- `get_listing_sales_summary`
+- `get_creator_profile`
 - `can_access_for_owner`
 
 The frontend keeps fallback reads for older registry records, but new publishes use the owner-scoped registry path.
@@ -120,6 +127,8 @@ VITE_APTOS_TESTNET_API_KEY=
 VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=
 VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS=
 VITE_PAYBY_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_APT_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA=
 ```
 
 Use network-specific payment assets when needed:
@@ -127,6 +136,10 @@ Use network-specific payment assets when needed:
 ```env
 VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_SHELBYNET_APT_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_TESTNET_APT_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_TESTNET_SHELBYUSD_PAYMENT_ASSET_METADATA=
 ```
 
 Never commit real API keys, wallet private keys, or local `.env` files.
@@ -232,10 +245,12 @@ Before inviting external users:
 - Publish one paid media item with a non-zero price.
 - Connect wallet B and confirm the paid page requests purchase before access.
 - Complete purchase from wallet B and verify `purchase_from` records the unlock on-chain.
+- Confirm wallet A sees updated creator revenue and listing-level sales.
+- Commit the creator profile on-chain and open `/creator/<wallet-address>`.
 - Connect wallet C and confirm wallet C does not inherit wallet B activity or purchase state.
 - Delete a listing from wallet A and confirm the public page no longer treats it as active.
 - Repeat the same path on Shelby Testnet after Early Access is granted.
 
 ## Current Status
 
-Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, and creator revenue summary deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
+Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, creator revenue summary, listing-level sales, and on-chain creator profile registry deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
