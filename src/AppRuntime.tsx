@@ -65,6 +65,7 @@ type RouteName =
   | "landing"
   | "vault"
   | "publish"
+  | "discover"
   | "library"
   | "network"
   | "detail"
@@ -271,6 +272,7 @@ const PENDING_PUBLISH_KEY = "payby-pending-publishes-v1";
 const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
 const REPUBLISH_DRAFT_KEY = "payby-republish-draft-v1";
+const DISCOVERY_CREATOR_KEY = "payby-discovery-creator-v1";
 const VAULT_PAGE_SIZE = 8;
 const ACTIVITY_PAGE_SIZE = 8;
 const ZERO_ADDRESS =
@@ -324,6 +326,7 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       };
     }
     if (path.startsWith("/app/publish")) return { name: "publish" };
+    if (path.startsWith("/app/discover")) return { name: "discover" };
     if (path.startsWith("/app/library")) return { name: "library" };
     if (path.startsWith("/app/network")) return { name: "network" };
     if (path.startsWith("/app/profile")) return { name: "profile" };
@@ -359,6 +362,7 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       landing: "/",
       vault: "/app/vault",
       publish: "/app/publish",
+      discover: "/app/discover",
       library: "/app/library",
       network: "/app/network",
       detail: detailPath,
@@ -2137,6 +2141,7 @@ function VaultApp({
   const viewTitle = {
     vault: "Vault library",
     publish: "Publish media",
+    discover: "Creator discovery",
     library: "Buyer library",
     network: "Network routes",
     detail: "Media detail",
@@ -2146,6 +2151,7 @@ function VaultApp({
   const viewLabel = {
     vault: "Creator workspace",
     publish: "Shelby upload flow",
+    discover: "Browse creator vaults",
     library: "Buyer workspace",
     network: "Live configuration",
     detail: "Blob operations",
@@ -2181,6 +2187,14 @@ function VaultApp({
             Publish
           </button>
           <span className="side-nav-label">Buyer</span>
+          <button
+            className={`side-link ${currentView === "discover" ? "is-active" : ""}`}
+            type="button"
+            onClick={() => onNavigate({ name: "discover" })}
+          >
+            <Search size={18} />
+            Discover
+          </button>
           <button
             className={`side-link ${currentView === "library" ? "is-active" : ""}`}
             type="button"
@@ -2312,6 +2326,14 @@ function VaultApp({
               selectedNetwork={selectedNetwork}
               metadataStore={metadataStore}
               purchaseStore={purchaseStore}
+              onNavigate={onNavigate}
+            />
+          ) : null}
+          {currentView === "discover" ? (
+            <CreatorDiscoveryPanel
+              accountAddress={accountAddress}
+              selectedNetwork={selectedNetwork}
+              metadataStore={metadataStore}
               onNavigate={onNavigate}
             />
           ) : null}
@@ -5207,6 +5229,248 @@ function ActivityPanel({
           />
         </>
       ) : null}
+    </section>
+  );
+}
+
+function CreatorDiscoveryPanel({
+  accountAddress,
+  selectedNetwork,
+  metadataStore,
+  onNavigate,
+}: {
+  accountAddress: string;
+  selectedNetwork: PaybyNetwork;
+  metadataStore: ReturnType<typeof useStoredMetadata>;
+  onNavigate: (route: AppRoute) => void;
+}) {
+  const [creatorAddress, setCreatorAddress] = React.useState(() =>
+    localStorage.getItem(DISCOVERY_CREATOR_KEY) || "",
+  );
+  const [submittedCreator, setSubmittedCreator] = React.useState(() =>
+    localStorage.getItem(DISCOVERY_CREATOR_KEY) || "",
+  );
+  const [profile, setProfile] = React.useState<CreatorProfile | null>(null);
+  const [items, setItems] = React.useState<MediaMetadata[]>([]);
+  const [salesSummary, setSalesSummary] = React.useState<CreatorSalesSummary>({
+    saleCount: 0,
+    revenue: "0",
+  });
+  const [loadState, setLoadState] = React.useState<
+    "idle" | "checking" | "ready" | "empty" | "error"
+  >(submittedCreator ? "checking" : "idle");
+  const [message, setMessage] = React.useState("");
+
+  const normalizedCreator = submittedCreator.trim();
+  const isOwnCreator =
+    Boolean(accountAddress && normalizedCreator) &&
+    accountAddress.toLowerCase() === normalizedCreator.toLowerCase();
+
+  React.useEffect(() => {
+    if (!normalizedCreator) {
+      setLoadState("idle");
+      return;
+    }
+
+    let cancelled = false;
+    setLoadState("checking");
+    setMessage("");
+
+    void Promise.all([
+      readCreatorProfile(selectedNetwork, normalizedCreator).catch(() => null),
+      readCreatorChainListings(selectedNetwork, normalizedCreator).catch(() => []),
+      readCreatorSalesSummary(selectedNetwork, normalizedCreator).catch(() => null),
+    ])
+      .then(async ([chainProfile, listings, sales]) => {
+        if (cancelled) return;
+        setProfile(chainProfile);
+        setSalesSummary(sales ?? { saleCount: 0, revenue: "0" });
+
+        const recovered = (
+          await Promise.all(
+            listings
+              .filter(({ listing }) => listing.active)
+              .map(async ({ blobName, listing }) => {
+                const cached =
+                  metadataStore.metadata[createMediaKey(normalizedCreator, blobName)];
+                const metadata =
+                  cached ??
+                  (await fetchCommittedMetadata(
+                    selectedNetwork,
+                    normalizedCreator,
+                    blobName,
+                    listing,
+                  ).catch(() => null)) ??
+                  metadataFromChainListing(selectedNetwork, blobName, listing);
+                return metadata.visibility === "private" ? null : metadata;
+              }),
+          )
+        ).filter((item): item is MediaMetadata => Boolean(item));
+
+        setItems(recovered);
+        setLoadState(recovered.length > 0 ? "ready" : "empty");
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [metadataStore.metadata, normalizedCreator, selectedNetwork]);
+
+  function openCreator() {
+    const nextCreator = creatorAddress.trim();
+    if (!nextCreator || !nextCreator.startsWith("0x")) {
+      setMessage("Enter a valid Aptos creator address beginning with 0x.");
+      return;
+    }
+    localStorage.setItem(DISCOVERY_CREATOR_KEY, nextCreator);
+    setSubmittedCreator(nextCreator);
+  }
+
+  return (
+    <section className="workspace-layout discover-layout">
+      <div className="panel discover-panel">
+        <div className="panel-header hero-panel-header">
+          <div>
+            <p className="muted">Buyer discovery</p>
+            <h2>Browse a creator vault</h2>
+            <span>
+              Enter a creator wallet to read public Payby listings from the
+              marketplace contract, then open media pages to unlock or purchase.
+            </span>
+          </div>
+          <Search size={24} />
+        </div>
+
+        <div className="creator-search-card">
+          <label className="search-box">
+            <Search size={17} />
+            <input
+              value={creatorAddress}
+              onChange={(event) => setCreatorAddress(event.target.value)}
+              placeholder="Creator wallet address, 0x..."
+              onKeyDown={(event) => {
+                if (event.key === "Enter") openCreator();
+              }}
+            />
+          </label>
+          <button className="button button-primary" type="button" onClick={openCreator}>
+            Explore creator
+            <ArrowRight size={17} />
+          </button>
+        </div>
+
+        {message ? <p className="inline-status">{message}</p> : null}
+
+        {normalizedCreator ? (
+          <div className="library-source-banner">
+            <ShieldCheck size={18} />
+            <div>
+              <strong>
+                {profile?.displayName || shortenAddress(normalizedCreator)}
+              </strong>
+              <p>
+                {profile?.bio ||
+                  "Payby is reading this creator's owner-scoped listings from Aptos. Purchases happen from your connected wallet on each media page."}
+              </p>
+            </div>
+            <button
+              className="button button-secondary compact-button"
+              type="button"
+              onClick={() => onNavigate({ name: "creator", owner: normalizedCreator })}
+            >
+              Public page
+              <ExternalLink size={15} />
+            </button>
+          </div>
+        ) : null}
+
+        {loadState === "idle" ? (
+          <EmptyState
+            title="Find a creator"
+            body="Paste a creator wallet address to browse their public Payby media without switching away from your buyer wallet."
+          />
+        ) : loadState === "checking" ? (
+          <EmptyState
+            title="Reading creator registry"
+            body="Payby is loading public listings, profile, and sales proof from the marketplace contract."
+          />
+        ) : loadState === "error" ? (
+          <EmptyState
+            title="Creator lookup failed"
+            body="The active fullnode could not read this creator registry. Check the address and network."
+          />
+        ) : loadState === "empty" ? (
+          <EmptyState
+            title="No public media"
+            body="This creator has no active public or unlisted Payby listings on the selected route."
+          />
+        ) : (
+          <ul className="creator-discovery-list">
+            {items.map((item) => (
+              <li key={createMediaKey(item.owner, item.blobName)}>
+                <div className="blob-icon">
+                  <FileArchive size={18} />
+                </div>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.description || "Shelby media with Aptos access proof."}</p>
+                  <span>
+                    {accessModeLabel(item.accessMode)}
+                    {item.accessMode === "paid" && item.price
+                      ? ` - ${item.price} ${item.currency}`
+                      : ` - ${item.visibility}`}
+                  </span>
+                </div>
+                <button
+                  className="button button-primary compact-button"
+                  type="button"
+                  onClick={() =>
+                    onNavigate({
+                      name: "share",
+                      owner: item.owner,
+                      blobName: item.blobName,
+                    })
+                  }
+                >
+                  Open media
+                  <ArrowRight size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <aside className="support-panel">
+        <div>
+          <p className="muted">Creator proof</p>
+          <h3>{normalizedCreator ? shortenAddress(normalizedCreator) : "No creator"}</h3>
+        </div>
+        <div className="network-mini-card">
+          <span>Connected wallet</span>
+          <strong>{accountAddress ? shortenAddress(accountAddress) : "No wallet"}</strong>
+          <p>
+            Buyer actions use the currently connected wallet. You do not need to
+            switch to the creator wallet to browse or purchase.
+          </p>
+        </div>
+        <div className="network-mini-card">
+          <span>Viewing mode</span>
+          <strong>{isOwnCreator ? "Own creator vault" : "External creator"}</strong>
+          <p>
+            Vault stays scoped to your wallet. Discovery reads another creator's
+            public registry and routes purchases through media pages.
+          </p>
+        </div>
+        <div className="network-mini-card">
+          <span>Creator sales</span>
+          <strong>{salesSummary.saleCount}</strong>
+          <p>{formatAssetUnits(salesSummary.revenue)} recorded on-chain.</p>
+        </div>
+      </aside>
     </section>
   );
 }

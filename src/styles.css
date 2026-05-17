@@ -4581,6 +4581,78 @@ a {
   padding: 0;
 }
 
+.discover-layout {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.creator-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-md);
+  align-items: center;
+  border: 1px solid color-mix(in oklch, var(--accent) 20%, var(--line));
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 5%, transparent), transparent 48%),
+    color-mix(in oklch, var(--surface-strong) 52%, transparent);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-inset);
+}
+
+.creator-search-card .search-box {
+  margin: 0;
+}
+
+.creator-discovery-list {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.creator-discovery-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3.5%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-inset);
+}
+
+.creator-discovery-list li:hover .blob-icon {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
+  color: var(--accent);
+}
+
+.creator-discovery-list strong {
+  display: block;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.creator-discovery-list p {
+  margin: var(--space-xs) 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.42;
+}
+
+.creator-discovery-list span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
 .buyer-library-list li {
   min-height: 78px;
   position: relative;
@@ -5483,6 +5555,7 @@ a {
   .workspace-layout,
   .detail-layout,
   .profile-layout,
+  .discover-layout,
   .public-media-shell,
   .public-creator-hero,
   .media-proof-grid,
@@ -5670,6 +5743,11 @@ a {
   }
 
   .publish-progress-track {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-search-card,
+  .creator-discovery-list li {
     grid-template-columns: 1fr;
   }
 
