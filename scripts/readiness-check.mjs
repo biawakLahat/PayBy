@@ -77,25 +77,6 @@ async function callView({ fullnode, contract, functionName, args = [] }) {
   return response.json();
 }
 
-async function checkGateway() {
-  const gatewayUrl = env("VITE_PAYBY_RETRIEVAL_GATEWAY_URL")?.replace(/\/$/, "");
-  if (!gatewayUrl) {
-    return status(false, "Retrieval gateway", "VITE_PAYBY_RETRIEVAL_GATEWAY_URL is empty");
-  }
-
-  try {
-    const response = await fetch(`${gatewayUrl}/health`);
-    const data = await response.json();
-    return status(
-      response.ok,
-      "Retrieval gateway",
-      `${data.policyMode || "unknown policy"} / ${data.marketplaceRegistry || "unknown registry"}`,
-    );
-  } catch (error) {
-    return status(false, "Retrieval gateway", error.message);
-  }
-}
-
 async function checkNetwork([key, network]) {
   const label = network.label;
   if (!network.contract) {
@@ -150,7 +131,7 @@ console.log("Payby readiness check");
 console.log("=====================");
 
 const results = [];
-results.push(await checkGateway());
+status(true, "Retrieval mode", "Direct Shelby while Early Access is pending");
 for (const entry of Object.entries(getNetworks())) {
   results.push(await checkNetwork(entry));
 }

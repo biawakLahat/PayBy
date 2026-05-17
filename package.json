@@ -5,11 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "gateway": "node server/retrieval-gateway.mjs",
-    "check:gateway": "node --check server/retrieval-gateway.mjs",
     "check:readiness": "node scripts/readiness-check.mjs",
     "build": "tsc --noEmit && vite build",
-    "verify": "npm run check:gateway && npm run build",
+    "verify": "npm run build",
     "verify:community": "npm run verify && npm run check:readiness",
     "preview": "vite preview --host 127.0.0.1"
   },

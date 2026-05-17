@@ -235,6 +235,7 @@ type ChainAccessProofState =
   | "denied"
   | "error"
   | "unconfigured";
+type MetadataSyncState = "local" | "syncing" | "synced" | "offline";
 
 const formatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
@@ -245,23 +246,6 @@ const ACTIVITY_KEY = "payby-activity-v1";
 const PENDING_PUBLISH_KEY = "payby-pending-publishes-v1";
 const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
-function resolveRetrievalGatewayUrl() {
-  const configured =
-    import.meta.env.VITE_PAYBY_RETRIEVAL_GATEWAY_URL?.replace(/\/$/, "") ?? "";
-  if (
-    configured &&
-    !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(configured)
-  ) {
-    return configured;
-  }
-
-  if (typeof window === "undefined") return configured;
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") return configured;
-  return window.location.origin;
-}
-
-const retrievalGatewayUrl = resolveRetrievalGatewayUrl();
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
@@ -899,9 +883,7 @@ function useStoredMetadata() {
   const [metadata, setMetadata] = React.useState<Record<string, MediaMetadata>>(
     () => readJson<Record<string, MediaMetadata>>(METADATA_KEY, {}),
   );
-  const [syncState, setSyncState] = React.useState<
-    "local" | "syncing" | "synced" | "offline"
-  >(retrievalGatewayUrl ? "syncing" : "local");
+  const [syncState] = React.useState<MetadataSyncState>("local");
 
   const saveMetadata = React.useCallback(
     (items: MediaMetadata[]) => {
@@ -913,74 +895,17 @@ function useStoredMetadata() {
         writeJson(METADATA_KEY, next);
         return next;
       });
-
-      if (retrievalGatewayUrl) {
-        void fetch(`${retrievalGatewayUrl}/api/metadata`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ items }),
-        })
-          .then((response) => {
-            setSyncState(response.ok ? "synced" : "offline");
-          })
-          .catch(() => setSyncState("offline"));
-      }
     },
     [],
   );
 
   const removeMetadata = React.useCallback((key: string) => {
     setMetadata((current) => {
-      const item = current[key];
       const next = { ...current };
       delete next[key];
       writeJson(METADATA_KEY, next);
-      if (item && retrievalGatewayUrl) {
-        void fetch(
-          `${retrievalGatewayUrl}/api/metadata/${item.network}/${encodeURIComponent(
-            item.owner,
-          )}/${encodeBlobPath(item.blobName)}`,
-          { method: "DELETE" },
-        )
-          .then((response) => {
-            setSyncState(response.ok ? "synced" : "offline");
-          })
-          .catch(() => setSyncState("offline"));
-      }
       return next;
     });
-  }, []);
-
-  React.useEffect(() => {
-    if (!retrievalGatewayUrl) return;
-
-    let cancelled = false;
-    async function syncMetadata() {
-      setSyncState("syncing");
-      try {
-        const response = await fetch(`${retrievalGatewayUrl}/api/metadata`);
-        const data = (await response.json()) as { metadata?: MediaMetadata[] };
-        if (cancelled || !response.ok || !Array.isArray(data.metadata)) return;
-
-        setMetadata((current) => {
-          const next = { ...current };
-          data.metadata?.forEach((item) => {
-            next[createMediaKey(item.owner, item.blobName)] = item;
-          });
-          writeJson(METADATA_KEY, next);
-          return next;
-        });
-        setSyncState("synced");
-      } catch {
-        if (!cancelled) setSyncState("offline");
-      }
-    }
-
-    void syncMetadata();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   return { metadata, saveMetadata, removeMetadata, syncState };
@@ -1266,23 +1191,7 @@ function getDownloadUrl(network: PaybyNetwork, owner: string, blobName: string) 
   )}`;
 }
 
-function getControlledDownloadUrl(
-  network: PaybyNetwork,
-  owner: string,
-  blobName: string,
-  accessToken = "",
-) {
-  if (!retrievalGatewayUrl) {
-    return getDownloadUrl(network, owner, blobName);
-  }
-
-  const token = accessToken ? `?token=${encodeURIComponent(accessToken)}` : "";
-  return `${retrievalGatewayUrl}/api/media/${network}/${encodeURIComponent(
-    owner,
-  )}/${encodeBlobPath(blobName)}${token}`;
-}
-
-function isGatewayRequired(metadata?: MediaMetadata) {
+function isRestrictedMedia(metadata?: MediaMetadata) {
   return Boolean(metadata?.accessMode && metadata.accessMode !== "free");
 }
 
@@ -1383,10 +1292,10 @@ function getExpiryState(micros?: number) {
 }
 
 function metadataRegistryLabel(syncState: ReturnType<typeof useStoredMetadata>["syncState"]) {
-  if (syncState === "synced") return "Gateway mirrored";
-  if (syncState === "syncing") return "Checking gateway";
-  if (syncState === "offline") return "Local fallback";
-  return "Local only";
+  if (syncState === "synced") return "Synced";
+  if (syncState === "syncing") return "Checking";
+  if (syncState === "offline") return "Browser cache";
+  return "Browser cache";
 }
 
 function pendingStatusLabel(status: PendingPublishStatus) {
@@ -1431,17 +1340,16 @@ function accessModeLabel(mode?: AccessMode) {
   return mode ? labels[mode] : "Unknown policy";
 }
 
-function accessModeDetail(mode?: AccessMode, gatewayReady = false) {
+function accessModeDetail(mode?: AccessMode) {
   if (!mode) return "Metadata is not available in this browser.";
   if (mode === "free") return "The creator marked this media as free to retrieve.";
-  if (!gatewayReady) return "Controlled retrieval needs the Payby gateway.";
   if (mode === "paid") {
-    return "Purchase on Aptos, then sign a wallet session to retrieve from Shelby.";
+    return "Purchase proof is recorded on Aptos before the Shelby media is shown.";
   }
   if (mode === "allowlist") {
-    return "Connect an allowlisted wallet and sign a retrieval session.";
+    return "Connect an allowlisted wallet to verify access from the Payby Move contract.";
   }
-  return "This policy needs a verifier before Payby can unlock retrieval.";
+  return "This policy needs a verifier before Payby can unlock the media.";
 }
 
 function createUnlockMessage({
@@ -1918,12 +1826,12 @@ function VaultApp({
             label="Metadata"
             value={
               metadataStore.syncState === "synced"
-                ? "Gateway synced"
+                ? "Synced"
                 : metadataStore.syncState === "syncing"
                   ? "Syncing"
-                  : metadataStore.syncState === "offline"
-                    ? "Local fallback"
-                    : "Local mode"
+                : metadataStore.syncState === "offline"
+                    ? "Browser cache"
+                    : "Browser cache"
             }
           />
         </section>
@@ -1945,26 +1853,13 @@ function VaultApp({
             <span>Metadata registry</span>
             <strong>
               {metadataStore.syncState === "synced"
-                ? "Gateway online"
+                ? "Synced"
                 : metadataStore.syncState === "offline"
                   ? "Browser cache"
-                  : "Checking"}
+                  : "Local cache"}
             </strong>
           </div>
         </section>
-
-        {metadataStore.syncState === "offline" ? (
-          <div className="gateway-banner" role="status">
-            <AlertTriangle size={18} />
-            <div>
-              <strong>Gateway metadata sync is offline</strong>
-              <span>
-                Publishing can continue, but community share pages may rely on
-                this browser cache until the gateway is reachable again.
-              </span>
-            </div>
-          </div>
-        ) : null}
 
         <section className="workspace-page" aria-live="polite">
           {currentView === "vault" ? (
@@ -2839,7 +2734,7 @@ function UploadPanel({
             <textarea
               value={allowlist}
               onChange={(event) => setAllowlist(event.target.value)}
-              placeholder="Wallet addresses, collection id, or pass notes. Enforcement requires a contract or gateway."
+              placeholder="Wallet addresses, collection id, or pass notes. Enforcement uses the Payby Move contract."
             />
           </label>
         </div>
@@ -3455,7 +3350,7 @@ function VaultList({
           {blobs.map((blob) => {
             const name = blob.blobNameSuffix ?? blob.name ?? blob.blobName ?? "untitled";
             const metadata = metadataStore.metadata[createMediaKey(accountAddress, name)];
-            const url = getControlledDownloadUrl(selectedNetwork, accountAddress, name);
+            const url = getDownloadUrl(selectedNetwork, accountAddress, name);
             const expiryState = getExpiryState(blob.expirationMicros);
             return (
               <li key={`${name}-${blob.creationMicros ?? ""}`}>
@@ -3986,8 +3881,8 @@ function MediaDetailPage({
               </code>
             </div>
             <div>
-              <span>Controlled gateway</span>
-              <strong>{retrievalGatewayUrl ? "Configured" : "Direct Shelby fallback"}</strong>
+              <span>Retrieval mode</span>
+              <strong>Direct Shelby</strong>
             </div>
             <div>
               <span>On-chain registry</span>
@@ -4714,12 +4609,6 @@ function NetworkPanel({
   metadataSyncState: ReturnType<typeof useStoredMetadata>["syncState"];
 }) {
   const network = PAYBY_NETWORKS[selectedNetwork];
-  const [gatewayStatus, setGatewayStatus] = React.useState<
-    "checking" | "online" | "offline"
-  >("checking");
-  const [gatewayDetail, setGatewayDetail] = React.useState(
-    retrievalGatewayUrl ? "Checking retrieval gateway." : "Gateway not configured.",
-  );
   const [copiedLabel, setCopiedLabel] = React.useState("");
   const rows = [
     { label: "Shelby RPC", value: network.shelbyRpcUrl },
@@ -4757,63 +4646,12 @@ function NetworkPanel({
       ok: Boolean(network.marketplaceContractAddress),
     },
     {
-      label: "Retrieval gateway",
-      state:
-        gatewayStatus === "online"
-          ? "Online"
-          : gatewayStatus === "checking"
-            ? "Checking"
-            : "Offline",
-      detail: gatewayDetail,
-      ok: gatewayStatus === "online",
+      label: "Retrieval mode",
+      state: "Direct Shelby",
+      detail: "Payby retrieves media directly from Shelby while Early Access is pending.",
+      ok: true,
     },
   ];
-
-  React.useEffect(() => {
-    if (!retrievalGatewayUrl) {
-      setGatewayStatus("offline");
-      setGatewayDetail("Set VITE_PAYBY_RETRIEVAL_GATEWAY_URL to enforce access.");
-      return;
-    }
-
-    let cancelled = false;
-
-    async function checkGateway() {
-      setGatewayStatus("checking");
-      try {
-        const response = await fetch(`${retrievalGatewayUrl}/health`);
-        const data = (await response.json()) as {
-          ok?: boolean;
-          policyMode?: string;
-          signatureVerification?: string;
-          marketplaceRegistry?: string;
-        };
-
-        if (cancelled) return;
-
-        if (!response.ok || !data.ok) {
-          throw new Error("Gateway health check failed.");
-        }
-
-        setGatewayStatus("online");
-        setGatewayDetail(
-          `${data.policyMode ?? "server-policy"} / ${
-            data.signatureVerification ?? "signature verification"
-          } / ${data.marketplaceRegistry ?? "marketplace unknown"}`,
-        );
-      } catch {
-        if (cancelled) return;
-        setGatewayStatus("offline");
-        setGatewayDetail("Gateway is not reachable from this browser.");
-      }
-    }
-
-    void checkGateway();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function copy(label: string, value: string) {
     await navigator.clipboard.writeText(value);
@@ -4846,22 +4684,10 @@ function NetworkPanel({
           <strong>{network.permanenceNote}</strong>
         </div>
         <div>
-          {gatewayStatus === "online" ? (
-            <ShieldCheck size={18} />
-          ) : gatewayStatus === "checking" ? (
-            <KeyRound size={18} />
-          ) : (
-            <AlertTriangle size={18} />
-          )}
-          <span>Retrieval gateway</span>
-          <strong>
-            {gatewayStatus === "online"
-              ? "Online"
-              : gatewayStatus === "checking"
-                ? "Checking"
-                : "Offline"}
-          </strong>
-          <p>{gatewayDetail}</p>
+          <Database size={18} />
+          <span>Retrieval mode</span>
+          <strong>Direct Shelby</strong>
+          <p>Direct retrieval keeps the community beta focused on Shelby storage and Move access proofs.</p>
         </div>
         <div>
           {metadataSyncState === "synced" ? (
@@ -4883,8 +4709,8 @@ function NetworkPanel({
           </strong>
           <p>
             {metadataSyncState === "synced"
-              ? "Vault metadata is mirrored through the Payby gateway."
-              : "Payby keeps a browser copy and retries gateway sync when available."}
+              ? "Vault metadata is synced."
+              : "Payby keeps a browser copy and uses on-chain metadata commitments as the durable source."}
           </p>
         </div>
       </div>
@@ -4960,22 +4786,14 @@ function NetworkPanel({
   );
 }
 
-function LockedMediaPreview({
-  accessMode,
-  gatewayReady,
-}: {
-  accessMode: AccessMode;
-  gatewayReady: boolean;
-}) {
+function LockedMediaPreview({ accessMode }: { accessMode: AccessMode }) {
   return (
     <div className="media-preview locked-preview">
       <div>
         <Lock size={42} />
         <strong>Access controlled media</strong>
         <span>
-          {gatewayReady
-            ? `This ${accessMode} asset requires a signed wallet session.`
-            : "Configure the Payby retrieval gateway to enforce this policy."}
+          {`This ${accessMode} asset opens after Payby verifies the on-chain access policy.`}
         </span>
       </div>
     </div>
@@ -5024,7 +4842,7 @@ function PurchaseReceiptCard({ receipt }: { receipt: PurchaseReceipt }) {
           <ExternalLink size={14} />
         </a>
       ) : (
-        <p className="muted">Access was unlocked with a signed wallet session.</p>
+        <p className="muted">Access was unlocked from the on-chain policy state.</p>
       )}
     </section>
   );
@@ -5045,8 +4863,7 @@ function PublicMediaPage({
   profile: CreatorProfile;
   onOpenApp: () => void;
 }) {
-  const { account, connected, signMessage, signAndSubmitTransaction } =
-    useWallet();
+  const { account, connected, signAndSubmitTransaction } = useWallet();
   const owner = route.owner ?? "";
   const blobName = route.blobName ?? "";
   const cachedMetadata = metadataStore.metadata[createMediaKey(owner, blobName)];
@@ -5075,7 +4892,6 @@ function PublicMediaPage({
     owner,
     blobName,
   );
-  const gatewayReady = Boolean(retrievalGatewayUrl);
   const marketplaceConfigured = Boolean(
     PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress,
   );
@@ -5084,7 +4900,7 @@ function PublicMediaPage({
     : metadata?.accessMode;
   const isLocked = effectiveAccessMode
     ? effectiveAccessMode !== "free"
-    : isGatewayRequired(metadata);
+    : isRestrictedMedia(metadata);
   const effectiveTitle =
     chainListing?.found && chainListing.title
       ? chainListing.title
@@ -5099,12 +4915,9 @@ function PublicMediaPage({
     unlockState === "signing",
     `${unlockMessage}-${purchaseReceipt?.hash ?? "no-receipt"}`,
   );
-  const mediaUrl =
-    isLocked && accessToken
-      ? getControlledDownloadUrl(selectedNetwork, owner, blobName, accessToken)
-      : getDownloadUrl(selectedNetwork, owner, blobName);
+  const mediaUrl = getDownloadUrl(selectedNetwork, owner, blobName);
   const accessLabel = accessModeLabel(effectiveAccessMode);
-  const accessDetail = accessModeDetail(effectiveAccessMode, gatewayReady);
+  const accessDetail = accessModeDetail(effectiveAccessMode);
   const visibleReceipt = purchaseReceipt ?? recoveredReceipt;
   const chainRegistryLabel =
     chainListingState === "checking"
@@ -5223,8 +5036,8 @@ function PublicMediaPage({
     if (!recoveredReceipt || purchaseReceipt || unlockMessage) return;
     setUnlockMessage(
       recoveredReceipt.hash
-        ? "Purchase recorded for this wallet. Sign a retrieval session to download again."
-        : "Access was previously unlocked on this wallet. Sign again to refresh the retrieval session.",
+        ? "Purchase recorded for this wallet. Unlock again to refresh the on-chain access proof."
+        : "Access was previously unlocked on this wallet.",
     );
   }, [purchaseReceipt, recoveredReceipt, unlockMessage]);
 
@@ -5273,80 +5086,14 @@ function PublicMediaPage({
     };
     setPurchaseReceipt(receipt);
     purchaseStore.upsertReceipt(receipt);
-    setUnlockMessage("Purchase confirmed. Sign the retrieval session to download from Shelby.");
+    setUnlockMessage("Purchase confirmed. Aptos access proof is ready.");
     return receipt;
-  }
-
-  async function requestAccessSession() {
-    if (!metadata || !account) {
-      throw new Error("Connect a wallet before requesting access.");
-    }
-
-    const address = getAccountAddress(account);
-    const nonce = crypto.randomUUID();
-    const message = createUnlockMessage({
-      selectedNetwork,
-      owner,
-      blobName,
-      nonce,
-    });
-
-    setUnlockMessage("Sign the access request from your wallet.");
-    const signed = await signMessage({
-      address: true,
-      application: true,
-      chainId: true,
-      message,
-      nonce,
-    });
-    const response = await fetch(`${retrievalGatewayUrl}/api/session`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        address,
-        publicKey: account.publicKey?.toString(),
-        network: selectedNetwork,
-        owner,
-        blobName,
-        nonce,
-        message,
-        accessPolicy: {
-          mode: effectiveAccessMode ?? metadata.accessMode,
-          allowlist: metadata.allowlist,
-          price:
-            chainListing?.found && chainListing.price !== "0"
-              ? chainListing.price
-              : metadata.price,
-          currency: metadata.currency,
-        },
-        signedMessage: {
-          ...signed,
-          signature: signed.signature?.toString(),
-        },
-      }),
-    });
-    const data = (await response.json().catch(() => ({}))) as {
-      token?: string;
-      error?: string;
-    };
-
-    if (!response.ok || !data.token) {
-      throw new Error(data.error || "Access request was denied.");
-    }
-
-    return data.token;
   }
 
   async function unlockMedia() {
     if (!metadata) {
       setUnlockState("denied");
       setUnlockMessage("Media metadata is not available in this browser.");
-      return;
-    }
-
-    if (!retrievalGatewayUrl) {
-      setUnlockState("denied");
-      setUnlockMessage("Controlled retrieval gateway is not configured.");
       return;
     }
 
@@ -5358,7 +5105,6 @@ function PublicMediaPage({
 
     try {
       setUnlockState("signing");
-      let token = "";
       let latestReceipt = purchaseReceipt ?? recoveredReceipt;
 
       if (effectiveAccessMode && effectiveAccessMode !== "free") {
@@ -5404,11 +5150,9 @@ function PublicMediaPage({
         }
       }
 
-      token = await requestAccessSession();
-
-      setAccessToken(token);
+      setAccessToken("direct-shelby");
       setUnlockState("authorized");
-      setUnlockMessage("Access granted. Download is routed through the Payby gateway.");
+      setUnlockMessage("Access granted. Media is available from Shelby.");
       if (effectiveAccessMode && effectiveAccessMode !== "free") {
         purchaseStore.upsertReceipt({
           hash: latestReceipt?.hash ?? "",
@@ -5475,10 +5219,10 @@ function PublicMediaPage({
               <span>Storage</span>
               <strong>{PAYBY_NETWORKS[selectedNetwork].label}</strong>
             </div>
-            <div className={gatewayReady ? "is-ready" : "is-warning"}>
-              {gatewayReady ? <KeyRound size={17} /> : <AlertTriangle size={17} />}
-              <span>Gateway</span>
-              <strong>{gatewayReady ? "Ready" : "Not configured"}</strong>
+            <div className="is-ready">
+              <Database size={17} />
+              <span>Retrieval</span>
+              <strong>Direct Shelby</strong>
             </div>
             <div
               className={
@@ -5523,7 +5267,6 @@ function PublicMediaPage({
           {isLocked && !accessToken ? (
             <LockedMediaPreview
               accessMode={effectiveAccessMode ?? "free"}
-              gatewayReady={gatewayReady}
             />
           ) : (
             <MediaPreview url={mediaUrl} title={effectiveTitle} blobName={blobName} />
@@ -5601,8 +5344,8 @@ function PublicMediaPage({
               <span>Price intent</span>
               <strong>{effectivePrice}</strong>
               <p>
-                Paid media checks the Payby marketplace registry before the
-                gateway releases a download session.
+                Paid media checks the Payby marketplace registry before Payby
+                opens the Shelby media.
               </p>
             </div>
           ) : null}
