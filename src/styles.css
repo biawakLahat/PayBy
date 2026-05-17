@@ -31,6 +31,10 @@
   --shadow-luminous: 0 28px 120px color-mix(in oklch, var(--brand-gold) 14%, transparent);
   --shadow-surface: 0 18px 54px oklch(0.08 0.014 176 / 0.2);
   --shadow-surface-hover: 0 24px 70px oklch(0.08 0.014 176 / 0.28);
+  --shadow-inset: inset 0 1px 0 color-mix(in oklch, var(--text) 7%, transparent);
+  --hairline: color-mix(in oklch, var(--line) 72%, transparent);
+  --surface-panel: color-mix(in oklch, var(--surface) 72%, var(--bg-elevated));
+  --surface-row: color-mix(in oklch, var(--surface) 70%, transparent);
   --bg: #0f1211;
   --bg-elevated: #151917;
   --surface: #1a201d;
@@ -53,6 +57,7 @@
   --focus-ring: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent);
   --duration-fast: 160ms;
   --duration-med: 240ms;
+  --duration-slow: 420ms;
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -79,6 +84,10 @@
   --shadow-luminous: 0 24px 90px color-mix(in oklch, var(--brand-bronze) 18%, transparent);
   --shadow-surface: 0 16px 46px color-mix(in oklch, var(--brand-bronze) 8%, transparent);
   --shadow-surface-hover: 0 22px 64px color-mix(in oklch, var(--brand-bronze) 12%, transparent);
+  --shadow-inset: inset 0 1px 0 color-mix(in oklch, white 70%, transparent);
+  --hairline: color-mix(in oklch, var(--line) 82%, transparent);
+  --surface-panel: color-mix(in oklch, var(--surface) 68%, var(--bg-elevated));
+  --surface-row: color-mix(in oklch, var(--bg-elevated) 66%, var(--surface));
   --control-shadow: 0 12px 30px color-mix(in oklch, var(--brand-bronze) 9%, transparent);
   --control-shadow-hover: 0 18px 42px color-mix(in oklch, var(--brand-bronze) 15%, transparent);
   --focus-ring: 0 0 0 3px color-mix(in oklch, var(--accent) 16%, transparent);
@@ -96,6 +105,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-display);
@@ -116,16 +126,16 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.18;
+  opacity: 0.1;
   background-image:
     linear-gradient(color-mix(in oklch, var(--line) 20%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in oklch, var(--line) 14%, transparent) 1px, transparent 1px);
-  background-size: 96px 96px;
+  background-size: 112px 112px;
   mask-image: linear-gradient(180deg, oklch(1 0 0), transparent 68%);
 }
 
 :root[data-theme="light"] body::before {
-  opacity: 0.16;
+  opacity: 0.08;
   background-image:
     linear-gradient(color-mix(in oklch, var(--line) 28%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in oklch, var(--line) 20%, transparent) 1px, transparent 1px);
@@ -136,6 +146,36 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--accent);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in oklch, var(--muted) 74%, transparent);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: color-mix(in oklch, var(--bg) 82%, var(--surface));
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid color-mix(in oklch, var(--bg) 82%, var(--surface));
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--muted) 34%, var(--line));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--accent) 48%, var(--line));
 }
 
 p,
@@ -162,6 +202,13 @@ a {
 
 button {
   cursor: pointer;
+}
+
+input,
+textarea,
+select,
+button {
+  letter-spacing: 0;
 }
 
 button:disabled {
@@ -264,7 +311,7 @@ a {
 .wallet-pill:hover,
 .select-shell:hover,
 .network-trigger:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: color-mix(in oklch, var(--accent) 60%, var(--line));
   box-shadow: var(--control-shadow-hover);
 }
@@ -334,7 +381,7 @@ a {
   font-size: 0.94rem;
   font-weight: 850;
   line-height: 1;
-  letter-spacing: 0.005em;
+  letter-spacing: 0;
   white-space: nowrap;
   box-shadow: var(--control-shadow);
 }
@@ -347,7 +394,7 @@ a {
   color: var(--accent-ink);
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, white 24%, transparent),
-    0 16px 42px color-mix(in oklch, var(--accent) 18%, transparent);
+    0 14px 34px color-mix(in oklch, var(--accent) 16%, transparent);
 }
 
 .button-primary:hover {
@@ -2157,7 +2204,7 @@ a {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   background:
     linear-gradient(135deg, color-mix(in oklch, var(--brand-aura) 2.5%, transparent), transparent 34%),
     linear-gradient(315deg, color-mix(in oklch, var(--brand-flash) 2.5%, transparent), transparent 38%),
@@ -2177,13 +2224,23 @@ a {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
   padding: var(--space-xl);
   border-right: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--brand-aura) 2.5%, transparent), transparent 46%),
     color-mix(in oklch, var(--bg-elevated) 90%, var(--bg));
-  box-shadow: 14px 0 44px oklch(0.06 0.014 176 / 0.16);
+  box-shadow: 12px 0 34px oklch(0.06 0.014 176 / 0.12);
+}
+
+.sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--accent) 22%, transparent), transparent);
+  opacity: 0.68;
 }
 
 :root[data-theme="light"] .sidebar {
@@ -2296,9 +2353,12 @@ a {
 }
 
 .workspace {
+  width: min(100%, 1740px);
+  min-height: 100vh;
   display: grid;
   align-content: start;
-  gap: var(--space-2xl);
+  gap: clamp(20px, 2.4vw, 32px);
+  margin: 0 auto;
   padding: clamp(24px, 3vw, 44px);
 }
 
@@ -2308,7 +2368,12 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-lg);
+  min-height: 72px;
   padding-bottom: var(--space-lg);
+}
+
+.topbar > div:first-child {
+  min-width: 0;
 }
 
 .topbar::after {
@@ -2321,9 +2386,10 @@ a {
 
 .topbar h1 {
   margin-top: var(--space-xs);
-  font-size: var(--type-title);
+  font-size: clamp(2.15rem, 3vw, var(--type-title));
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.98;
+  text-wrap: balance;
 }
 
 .select-shell {
@@ -2547,8 +2613,8 @@ a {
     var(--bg-elevated);
   padding: 7px;
   box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--text) 8%, transparent),
-    0 22px 64px oklch(0.08 0.02 150 / 0.34);
+    var(--shadow-inset),
+    0 24px 70px color-mix(in oklch, var(--bg) 48%, transparent);
   animation: network-menu-in 160ms var(--ease-out-quint) both;
 }
 
@@ -2636,8 +2702,8 @@ a {
     linear-gradient(180deg, color-mix(in oklch, var(--surface) 74%, transparent), color-mix(in oklch, var(--bg-elevated) 92%, transparent)),
     var(--bg-elevated);
   box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--text) 8%, transparent),
-    var(--shadow-soft);
+    var(--shadow-inset),
+    0 24px 70px color-mix(in oklch, var(--bg) 48%, transparent);
   backdrop-filter: blur(18px);
 }
 
@@ -2704,7 +2770,7 @@ a {
   background:
     linear-gradient(135deg, color-mix(in oklch, var(--accent) 9%, transparent), transparent 44%),
     color-mix(in oklch, var(--surface) 84%, transparent);
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 
 .wallet-list img {
@@ -2864,13 +2930,15 @@ a {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr 0.85fr 0.85fr;
   gap: var(--space-md);
-  border: 1px solid color-mix(in oklch, var(--line) 58%, transparent);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(90deg, color-mix(in oklch, var(--surface) 72%, transparent), color-mix(in oklch, var(--bg-elevated) 76%, transparent)),
+    linear-gradient(90deg, color-mix(in oklch, var(--surface) 66%, transparent), color-mix(in oklch, var(--bg-elevated) 70%, transparent)),
     var(--surface);
   padding: var(--space-sm);
-  box-shadow: var(--shadow-surface);
+  box-shadow:
+    var(--shadow-inset),
+    0 14px 36px oklch(0.08 0.025 245 / 0.07);
 }
 
 :root[data-theme="light"] .workspace-intel {
@@ -2945,13 +3013,26 @@ a {
 .panel {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--line) 76%, transparent);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(145deg, color-mix(in oklch, var(--surface) 92%, transparent), color-mix(in oklch, var(--bg-elevated) 84%, transparent)),
-    var(--surface);
+    linear-gradient(145deg, color-mix(in oklch, var(--surface) 88%, transparent), color-mix(in oklch, var(--bg-elevated) 78%, transparent)),
+    var(--surface-panel);
   padding: var(--space-2xl);
-  box-shadow: var(--shadow-surface);
+  box-shadow:
+    var(--shadow-inset),
+    var(--shadow-surface);
+  transition:
+    border-color var(--duration-med) var(--ease-out-quint),
+    box-shadow var(--duration-med) var(--ease-out-quint),
+    background var(--duration-med) var(--ease-out-quint);
+}
+
+.panel:hover {
+  border-color: color-mix(in oklch, var(--line) 74%, var(--accent));
+  box-shadow:
+    var(--shadow-inset),
+    0 20px 58px color-mix(in oklch, var(--bg) 28%, transparent);
 }
 
 :root[data-theme="light"] .panel {
@@ -2966,15 +3047,34 @@ a {
 .panel::before {
   content: "";
   position: absolute;
+  z-index: 0;
   inset: 0 0 auto;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, color-mix(in oklch, var(--accent) 26%, transparent), transparent 42%, color-mix(in oklch, var(--cool) 16%, transparent));
+  background: linear-gradient(90deg, color-mix(in oklch, var(--accent) 20%, transparent), transparent 38%, color-mix(in oklch, var(--cool) 13%, transparent));
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--accent) 6%, transparent), transparent 32%),
+    radial-gradient(circle at 96% 12%, color-mix(in oklch, var(--cool) 5%, transparent), transparent 34%);
+  opacity: 0.7;
+}
+
+.panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .panel-header {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2984,7 +3084,7 @@ a {
 
 .hero-panel-header {
   align-items: center;
-  border-bottom: 1px solid color-mix(in oklch, var(--line) 58%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 48%, transparent);
   padding-bottom: var(--space-xl);
 }
 
@@ -3014,6 +3114,7 @@ a {
 }
 
 .dropzone {
+  z-index: 1;
   min-height: 230px;
   position: relative;
   overflow: hidden;
@@ -3031,7 +3132,8 @@ a {
   transition:
     border-color 220ms var(--ease-out-quint),
     background 220ms var(--ease-out-quint),
-    transform 220ms var(--ease-out-quint);
+    transform 220ms var(--ease-out-quint),
+    box-shadow 220ms var(--ease-out-quint);
 }
 
 .dropzone::before {
@@ -3055,6 +3157,9 @@ a {
   background:
     linear-gradient(145deg, color-mix(in oklch, var(--accent) 8%, transparent), color-mix(in oklch, var(--surface-strong) 68%, transparent)),
     var(--surface-strong);
+  box-shadow:
+    var(--shadow-inset),
+    0 18px 46px color-mix(in oklch, var(--accent) 8%, transparent);
 }
 
 .dropzone input {
@@ -3134,7 +3239,7 @@ a {
   border-radius: var(--radius-sm);
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 60%),
-    color-mix(in oklch, var(--surface) 66%, transparent);
+    var(--surface-row);
   padding: var(--space-md);
   box-shadow: 0 10px 26px color-mix(in oklch, var(--bg) 22%, transparent);
   transition:
@@ -3381,6 +3486,8 @@ a {
 
 .pending-publish-item,
 .transaction-history li {
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-items: center;
   gap: var(--space-md);
@@ -3388,8 +3495,54 @@ a {
   border-radius: var(--radius-sm);
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 62%),
-    color-mix(in oklch, var(--surface) 70%, transparent);
+    var(--surface-row);
   padding: var(--space-sm) var(--space-md);
+  transition:
+    transform var(--duration-fast) var(--ease-out-quint),
+    border-color var(--duration-fast) var(--ease-out-quint),
+    background var(--duration-fast) var(--ease-out-quint),
+    box-shadow var(--duration-fast) var(--ease-out-quint);
+}
+
+.file-list li::before,
+.blob-list li::before,
+.pending-publish-item::before,
+.transaction-history li::before,
+.buyer-library-list li::before,
+.activity-list li::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in oklch, var(--accent) 6%, transparent), transparent 34%);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out-quint);
+}
+
+.file-list li:hover::before,
+.blob-list li:hover::before,
+.pending-publish-item:hover::before,
+.transaction-history li:hover::before,
+.buyer-library-list li:hover::before,
+.activity-list li:hover::before {
+  opacity: 1;
+}
+
+.file-list li > *,
+.blob-list li > *,
+.pending-publish-item > *,
+.transaction-history li > *,
+.buyer-library-list li > *,
+.activity-list li > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pending-publish-item:hover,
+.transaction-history li:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--accent) 26%, var(--line));
+  box-shadow: var(--shadow-surface);
 }
 
 .pending-publish-item {
@@ -3465,9 +3618,22 @@ a {
   gap: var(--space-md);
   border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
   border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--surface-strong) 66%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
   padding: var(--space-sm);
   margin-top: var(--space-md);
+  box-shadow: var(--shadow-inset);
+}
+
+.pagination-bar .button {
+  min-height: 36px;
+  padding: 0 13px;
+  box-shadow: none;
+}
+
+.pagination-bar .button:not(:disabled):hover {
+  box-shadow: 0 10px 24px color-mix(in oklch, var(--bg) 18%, transparent);
 }
 
 .pagination-bar > span,
@@ -3531,6 +3697,8 @@ a {
 }
 
 .publish-alert {
+  position: relative;
+  overflow: hidden;
   min-height: 68px;
   display: flex;
   align-items: flex-start;
@@ -3542,7 +3710,23 @@ a {
   background:
     linear-gradient(135deg, color-mix(in oklch, var(--accent) 8%, transparent), transparent 58%),
     color-mix(in oklch, var(--surface-strong) 78%, transparent);
-  box-shadow: var(--shadow-soft);
+  box-shadow:
+    var(--shadow-inset),
+    0 18px 44px color-mix(in oklch, var(--bg) 18%, transparent);
+}
+
+.publish-alert::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in oklch, var(--accent) 10%, transparent), transparent 38%);
+  opacity: 0.72;
+}
+
+.publish-alert > * {
+  position: relative;
+  z-index: 1;
 }
 
 .publish-alert svg {
@@ -3575,6 +3759,10 @@ a {
     color-mix(in oklch, var(--surface-strong) 78%, transparent);
 }
 
+.publish-alert.is-success::before {
+  background: linear-gradient(90deg, color-mix(in oklch, var(--success) 12%, transparent), transparent 38%);
+}
+
 .publish-alert.is-success svg {
   color: var(--success);
 }
@@ -3586,12 +3774,20 @@ a {
     color-mix(in oklch, var(--surface-strong) 78%, transparent);
 }
 
+.publish-alert.is-danger::before {
+  background: linear-gradient(90deg, color-mix(in oklch, var(--danger) 12%, transparent), transparent 38%);
+}
+
 .publish-alert.is-danger svg {
   color: var(--danger);
 }
 
 .publish-alert.is-warning {
   border-color: color-mix(in oklch, var(--warning) 42%, var(--line));
+}
+
+.publish-alert.is-warning::before {
+  background: linear-gradient(90deg, color-mix(in oklch, var(--warning) 12%, transparent), transparent 38%);
 }
 
 .publish-alert.is-warning svg {
@@ -3633,7 +3829,9 @@ a {
   gap: var(--space-sm);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface) 82%, transparent);
   padding: 0 var(--space-md);
   margin-bottom: var(--space-lg);
   transition:
@@ -3675,7 +3873,7 @@ a {
     linear-gradient(145deg, color-mix(in oklch, var(--surface-strong) 38%, transparent), transparent),
     color-mix(in oklch, var(--bg-elevated) 50%, transparent);
   padding: var(--space-2xl);
-  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--text) 5%, transparent);
+  box-shadow: var(--shadow-inset);
 }
 
 :root[data-theme="light"] .empty-state {
@@ -3731,6 +3929,17 @@ a {
     linear-gradient(180deg, color-mix(in oklch, var(--text) 8%, transparent), transparent 54%),
     color-mix(in oklch, var(--cool) 16%, transparent);
   color: var(--cool);
+  transition:
+    transform var(--duration-fast) var(--ease-out-quint),
+    border-color var(--duration-fast) var(--ease-out-quint),
+    color var(--duration-fast) var(--ease-out-quint);
+}
+
+.blob-list li:hover .blob-icon,
+.buyer-library-list li:hover .blob-icon {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
+  color: var(--accent);
 }
 
 .vault-metrics {
@@ -3744,12 +3953,14 @@ a {
 .support-panel,
 .network-overview div,
 .network-mini-card {
-  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--text) 3.5%, transparent), transparent 58%),
     color-mix(in oklch, var(--surface-strong) 58%, transparent);
-  box-shadow: var(--shadow-surface);
+  box-shadow:
+    var(--shadow-inset),
+    var(--shadow-surface);
   transition:
     transform var(--duration-med) var(--ease-out-quint),
     border-color var(--duration-med) var(--ease-out-quint),
@@ -3875,11 +4086,12 @@ a {
   border: 1px solid color-mix(in oklch, var(--line) 86%, transparent);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 60%),
-    color-mix(in oklch, var(--surface-strong) 74%, transparent);
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3%, transparent), transparent 60%),
+    color-mix(in oklch, var(--surface-strong) 64%, transparent);
   color: var(--text);
   outline: 0;
   padding: 0 var(--space-md);
+  box-shadow: var(--shadow-inset);
   transition:
     border-color 180ms var(--ease-out-quint),
     background 180ms var(--ease-out-quint),
@@ -3907,11 +4119,12 @@ a {
 .access-grid select:focus {
   border-color: var(--accent);
   background:
-    linear-gradient(180deg, color-mix(in oklch, var(--text) 5%, transparent), transparent 60%),
-    color-mix(in oklch, var(--surface-strong) 84%, transparent);
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 60%),
+    color-mix(in oklch, var(--surface-strong) 78%, transparent);
   box-shadow:
     0 0 0 3px color-mix(in oklch, var(--accent) 14%, transparent),
-    0 10px 26px color-mix(in oklch, var(--bg) 18%, transparent);
+    var(--shadow-inset),
+    0 10px 26px color-mix(in oklch, var(--bg) 14%, transparent);
 }
 
 .form-wide {
@@ -3925,6 +4138,7 @@ a {
 
 .media-preview {
   min-height: 360px;
+  aspect-ratio: 16 / 7;
   position: relative;
   display: grid;
   place-items: center;
@@ -3938,11 +4152,24 @@ a {
     var(--surface);
   background-size: 42px 42px, 42px 42px, auto, auto;
   margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-inset);
+}
+
+.media-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 34%, color-mix(in oklch, var(--bg) 16%, transparent)),
+    linear-gradient(180deg, transparent 72%, color-mix(in oklch, var(--bg) 10%, transparent));
 }
 
 .media-preview img,
 .media-preview video,
 .media-preview iframe {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   max-height: 520px;
@@ -3952,10 +4179,14 @@ a {
 }
 
 .media-preview audio {
+  position: relative;
+  z-index: 1;
   width: min(90%, 520px);
 }
 
 .media-preview div {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   gap: var(--space-sm);
@@ -4066,6 +4297,37 @@ a {
     linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 58%),
     color-mix(in oklch, var(--surface-strong) 68%, transparent);
   padding: var(--space-md);
+}
+
+.file-review div,
+.detail-meta-grid div,
+.media-proof-grid div,
+.public-access-bar div,
+.receipt-grid div,
+.proof-summary div,
+.buyer-library-summary div,
+.endpoint,
+.network-mini-card,
+.network-overview div {
+  transition:
+    transform var(--duration-fast) var(--ease-out-quint),
+    border-color var(--duration-fast) var(--ease-out-quint),
+    box-shadow var(--duration-fast) var(--ease-out-quint),
+    background var(--duration-fast) var(--ease-out-quint);
+}
+
+.file-review div:hover,
+.detail-meta-grid div:hover,
+.media-proof-grid div:hover,
+.public-access-bar div:hover,
+.receipt-grid div:hover,
+.proof-summary div:hover,
+.buyer-library-summary div:hover,
+.network-mini-card:hover,
+.network-overview div:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  box-shadow: var(--shadow-surface);
 }
 
 .detail-meta-grid span,
@@ -4338,13 +4600,14 @@ a {
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
-  border: 1px solid color-mix(in oklch, var(--accent) 24%, var(--line));
+  border: 1px solid color-mix(in oklch, var(--accent) 20%, var(--line));
   border-radius: var(--radius-sm);
   background:
     linear-gradient(135deg, color-mix(in oklch, var(--accent) 5%, transparent), transparent 46%),
-    color-mix(in oklch, var(--surface-strong) 56%, transparent);
+    color-mix(in oklch, var(--surface-strong) 50%, transparent);
   padding: var(--space-lg);
   margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-inset);
 }
 
 .library-source-banner svg {
@@ -4388,6 +4651,8 @@ a {
 
 .buyer-library-list li {
   min-height: 78px;
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
@@ -4603,15 +4868,18 @@ a {
     linear-gradient(145deg, color-mix(in oklch, var(--accent) 5%, transparent), transparent 34%),
     color-mix(in oklch, var(--surface-strong) 58%, transparent);
   padding: var(--space-lg);
+  box-shadow: var(--shadow-inset);
   transition:
     transform var(--duration-fast) var(--ease-out-quint),
     border-color var(--duration-fast) var(--ease-out-quint),
-    background var(--duration-fast) var(--ease-out-quint);
+    background var(--duration-fast) var(--ease-out-quint),
+    box-shadow var(--duration-fast) var(--ease-out-quint);
 }
 
 .activity-list li:hover {
   transform: translateY(-1px);
   border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
+  box-shadow: var(--shadow-surface);
 }
 
 .activity-list p {
@@ -4784,9 +5052,12 @@ a {
 }
 
 .public-media-shell {
+  width: min(100%, 1760px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: var(--space-xl);
+  align-items: start;
+  margin: 0 auto;
   padding: 112px clamp(16px, 6vw, 80px) var(--space-3xl);
 }
 
@@ -4794,6 +5065,7 @@ a {
   margin: 0;
   font-size: clamp(2.2rem, 5vw, 5rem);
   line-height: 0.95;
+  letter-spacing: 0;
 }
 
 .public-access-bar {
@@ -5359,6 +5631,7 @@ a {
   .pending-publish-item > span:not(.pending-state-dot),
   .pending-publish-item em,
   .pending-publish-item .transaction-link,
+  .pending-publish-item .icon-button,
   .buyer-library-list li .proof-pill,
   .buyer-library-list li .button,
   .buyer-library-list li .icon-button,
@@ -5389,6 +5662,19 @@ a {
   .workspace,
   .panel {
     padding: var(--space-lg);
+  }
+
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-bar > div {
+    width: 100%;
+  }
+
+  .pagination-bar .button {
+    flex: 1 1 0;
   }
 
   .endpoint {
