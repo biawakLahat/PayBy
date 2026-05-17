@@ -1,172 +1,237 @@
 # Payby
 
-Creator media vault for Shelby and Aptos.
+Payby is a Web3-native creator media vault built for Shelby storage and Aptos wallets.
 
-## Run The dApp
+It lets creators publish media to Shelby, register access policy and metadata commitments on Aptos, and share media pages that can be verified through wallet ownership, paid unlock state, and on-chain listing records.
 
-```bash
-npm install
-npm run dev
-```
+## Product Scope
 
-The Vite app runs on `http://127.0.0.1:5173` or the next available port.
+Payby is designed for creators who need a wallet-native way to publish and manage premium media without relying on a centralized account system.
 
-## Run The Retrieval Gateway
+Core workflows:
 
-The gateway is optional for local browsing, but required for real access
-enforcement. It creates short wallet-bound access sessions and proxies media
-retrieval through Shelby.
+- Publish media blobs to Shelby from a connected Aptos wallet.
+- Register creator-owned media listings on-chain.
+- Store metadata commitments for title, category, visibility, policy, and Shelby URI.
+- Support free, paid, private, and allowlist-oriented media policies.
+- Record paid unlock proofs on Aptos.
+- Keep vault, activity, and library views scoped to the connected wallet.
+- Operate across Shelbynet and Shelby Testnet routes.
 
-```bash
-npm run gateway
-```
+Current retrieval mode is direct Shelby retrieval while Shelby Early Access is pending. The Move registry is the durable source for listing ownership, access policy, metadata commitments, and purchase proofs.
 
-Default gateway URL:
+## Architecture
 
 ```text
-http://127.0.0.1:8787
+Creator wallet
+  |
+  | signs upload / registry transactions
+  v
+Payby frontend
+  |
+  | Shelby React SDK + Shelby browser SDK
+  v
+Shelby storage
+  |
+  | media blob + Payby metadata blob
+  v
+Aptos Move registry
+  |
+  | owner-scoped listings, policy, metadata hash, purchases
+  v
+Vault / Library / Public media pages
 ```
 
-Frontend integration:
+Main integration points:
 
-```env
-VITE_PAYBY_RETRIEVAL_GATEWAY_URL=http://127.0.0.1:8787
-```
+- `@shelby-protocol/react` for the upload flow.
+- `@shelby-protocol/sdk` for browser-side Shelby client operations.
+- `@aptos-labs/wallet-adapter-react` for wallet connection and signing.
+- `@aptos-labs/ts-sdk` for Aptos fullnode reads and transaction finality.
+- `contracts/payby_marketplace` for on-chain creator listing and access state.
 
-Gateway environment:
+## Networks
 
-```env
-PAYBY_GATEWAY_PORT=8787
-PAYBY_GATEWAY_SECRET=replace-with-random-secret
-PAYBY_GATEWAY_ADMIN_TOKEN=replace-with-admin-token
-PAYBY_GATEWAY_ALLOWED_ORIGINS=https://your-payby-app.example
-PAYBY_GATEWAY_MAX_BODY_BYTES=128000
-PAYBY_GATEWAY_MAX_METADATA_ITEMS=20
-PAYBY_GATEWAY_RATE_LIMIT_WINDOW_MS=60000
-PAYBY_GATEWAY_RATE_LIMIT_MAX=30
-PAYBY_GATEWAY_ALLOW_CLIENT_POLICY=false
-PAYBY_GATEWAY_SKIP_SIGNATURE_VERIFY=false
-PAYBY_TESTNET_MARKETPLACE_ADDRESS=
-PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=
-PAYBY_APTOS_TESTNET_API_KEY=
-PAYBY_APTOS_SHELBYNET_API_KEY=
-```
+Payby supports two Shelby routes:
 
-`PAYBY_GATEWAY_ALLOW_CLIENT_POLICY=true` is only useful during development.
-Production policy should be written server-side through the policy API.
-For community use, avoid `PAYBY_GATEWAY_ALLOWED_ORIGINS=*`; set it to the
-deployed frontend origin.
+| Payby route | Wallet network | Shelby RPC | Purpose |
+| --- | --- | --- | --- |
+| Shelbynet | `Network.SHELBYNET` | `https://api.shelbynet.shelby.xyz/shelby` | Current primary route for live prototype testing |
+| Shelby Testnet | `Network.TESTNET` | `https://api.testnet.shelby.xyz/shelby` | Early Access test route |
 
-Production gateway guardrails are enabled when `NODE_ENV=production`. The
-gateway will refuse to boot if the secret is weak, CORS is open, signature
-verification is disabled, client-supplied policies are enabled, or marketplace
-addresses are missing.
+Shelbynet data may be wiped by the network. Do not treat prototype network storage as permanent archival storage.
 
-Docker deployment:
+## On-Chain Registry
 
-```bash
-docker build -f Dockerfile.gateway -t payby-gateway .
-docker run --env-file .env -p 8787:8787 payby-gateway
-```
-
-Render deployment is scaffolded in `render.yaml`. Set
-`PAYBY_GATEWAY_ALLOWED_ORIGINS` to the deployed frontend URL before first
-deploy. Render generates `PAYBY_GATEWAY_SECRET` and
-`PAYBY_GATEWAY_ADMIN_TOKEN`; keep both private.
-
-## Access Registry Contract
-
-Payby includes a Move package for the marketplace/access registry:
+The Move package lives in:
 
 ```text
 contracts/payby_marketplace/
 ```
 
-After deployment, set the module address in the frontend and gateway env:
+The registry stores:
+
+- owner-scoped media listings
+- blob names and creator addresses
+- visibility and access policy
+- paid unlock price and payment asset metadata address
+- allowlist notes
+- metadata URI and metadata hash commitments
+- buyer purchase records
+
+Important entry functions:
+
+- `initialize`
+- `upsert_listing_for_owner_with_metadata`
+- `purchase_from`
+- `delist_for_owner`
+
+Important view functions:
+
+- `get_listing_for_owner`
+- `get_listing_metadata_for_owner`
+- `get_listing_count_for_owner`
+- `get_listing_key_for_owner`
+- `get_purchases_from_owner`
+- `can_access_for_owner`
+
+The frontend keeps fallback reads for older registry records, but new publishes use the owner-scoped registry path.
+
+## Environment
+
+Create a local `.env` from `.env.example`.
+
+```bash
+cp .env.example .env
+```
+
+Required frontend variables:
 
 ```env
-VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS=0x...
-VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=0x...
-PAYBY_TESTNET_MARKETPLACE_ADDRESS=0x...
-PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=0x...
-VITE_PAYBY_PAYMENT_ASSET_METADATA=0x...
+VITE_PAYBY_DEFAULT_NETWORK=shelbynet
+VITE_SHELBYNET_API_KEY=
+VITE_SHELBY_TESTNET_API_KEY=
+VITE_APTOS_SHELBYNET_API_KEY=
+VITE_APTOS_TESTNET_API_KEY=
+VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=
+VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS=
+VITE_PAYBY_PAYMENT_ASSET_METADATA=
 ```
 
-The frontend registers allowlist and paid media with
-`payby_marketplace::upsert_listing`. The public media page asks the gateway for
-a signed access session; the gateway checks `can_access` before proxying Shelby
-downloads.
+Use network-specific payment assets when needed:
 
-The gateway also exposes a lightweight metadata registry:
-
-```text
-GET    /api/metadata
-GET    /api/metadata/:network/:owner/:blob
-POST   /api/metadata
-DELETE /api/metadata/:network/:owner/:blob
+```env
+VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA=
 ```
 
-Published media is mirrored there so vault/share metadata can survive beyond a
-single browser cache during local and early community testing.
+Never commit real API keys, wallet private keys, or local `.env` files.
 
-Deployment helper:
+## Development
 
-```powershell
-.\scripts\deploy-payby-marketplace.ps1 -Network testnet -Profile payby-testnet -UpdateEnv
+Install dependencies:
+
+```bash
+npm install
 ```
 
-The deployer account must already have gas on the target network. For the local
-testnet profile created by Aptos CLI, fund the shown address from
-`https://aptos.dev/network/faucet` before running the helper.
+Run the app:
 
-## Project Layout
-
-```text
-src/
-  components/       reusable UI components
-  config/           network and wallet configuration
-  lib/              shared browser helpers
-  App.tsx           dApp routes and workflows
-  main.tsx          providers and app bootstrap
-server/
-  retrieval-gateway.mjs
-  data/
-contracts/
-  payby_marketplace/
+```bash
+npm run dev
 ```
 
-## Shelby Notes
+Vite serves the app at `http://127.0.0.1:5173` or the next available port.
 
-The Vite config serves `@shelby-protocol/clay-codes/dist/clay.wasm` as
-`application/wasm` during development. Keep this in place; Shelby upload
-encoding depends on it.
+Build and type-check:
 
-## Community Readiness
+```bash
+npm run build
+```
 
-Before inviting a wider community, run:
+Community readiness check:
 
 ```bash
 npm run verify:community
 ```
 
-For a faster environment check without rebuilding the frontend, run:
+The readiness check validates marketplace configuration, callable Move views, payment asset configuration, and current direct Shelby retrieval mode without printing secrets.
 
-```bash
-npm run check:readiness
+## Deploying The Move Package
+
+The helper script publishes and initializes the Payby registry package.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-payby-marketplace.ps1 `
+  -Network shelbynet `
+  -Profile payby-testnet `
+  -Address 0x... `
+  -UpdateEnv
 ```
 
-The readiness check verifies configured marketplace addresses, callable
-marketplace views, payment asset configuration, and gateway health without
-printing secrets.
+For Shelby Testnet:
 
-Minimum launch checklist:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-payby-marketplace.ps1 `
+  -Network testnet `
+  -Profile payby-testnet `
+  -Address 0x... `
+  -UpdateEnv
+```
 
-- Deploy the frontend with `VITE_PAYBY_RETRIEVAL_GATEWAY_URL` pointing to an
-  HTTPS gateway.
-- Deploy the gateway with a strong `PAYBY_GATEWAY_SECRET`, restricted
-  `PAYBY_GATEWAY_ALLOWED_ORIGINS`, and both marketplace contract addresses.
-- Test free, allowlist, and paid media on Shelby testnet and Shelbynet.
-- Confirm a second wallet can purchase and unlock a paid media link.
-- Confirm the wrong wallet is denied for allowlist media.
-- Monitor gateway logs for denied sessions, Shelby retrieval failures, and
-  Aptos view failures during the beta window.
+The deployer account must have enough gas on the selected network before publishing.
+
+## Project Layout
+
+```text
+src/
+  App.tsx                 landing shell and lazy runtime loader
+  AppRuntime.tsx          dApp routes, Shelby workflows, registry reads/writes
+  browser-polyfills.ts    browser polyfills required by Shelby/Aptos packages
+  components/
+    PaybyLogo.tsx         Payby brand mark
+  config/
+    networks.ts           Shelbynet, Shelby Testnet, wallet, and RPC config
+  styles.css              full application styling and responsive layout
+
+contracts/
+  payby_marketplace/      Aptos Move access registry
+
+scripts/
+  deploy-payby-marketplace.ps1
+  readiness-check.mjs
+
+public/
+  payby-icon.svg          browser and app icon
+```
+
+## Shelby Implementation Notes
+
+Shelby upload encoding depends on Clay WASM. The Vite config serves:
+
+```text
+@shelby-protocol/clay-codes/dist/clay.wasm
+```
+
+with `application/wasm` during development. Keep this behavior intact when changing Vite configuration.
+
+Payby currently writes Payby metadata as a Shelby blob and commits its URI/hash on-chain. This keeps user-facing metadata recoverable from Shelby while keeping the ownership and access proof on Aptos.
+
+## Community Beta Checklist
+
+Before inviting external users:
+
+- Verify the production frontend has all required Vercel environment variables.
+- Publish one small free media item on Shelbynet from wallet A.
+- Confirm wallet A sees only wallet A vault and activity entries.
+- Open the public media page and verify the Shelby blob can be previewed or downloaded.
+- Publish one paid media item with a non-zero price.
+- Connect wallet B and confirm the paid page requests purchase before access.
+- Complete purchase from wallet B and verify `purchase_from` records the unlock on-chain.
+- Connect wallet C and confirm wallet C does not inherit wallet B activity or purchase state.
+- Delete a listing from wallet A and confirm the public page no longer treats it as active.
+- Repeat the same path on Shelby Testnet after Early Access is granted.
+
+## Current Status
+
+Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
