@@ -13,6 +13,8 @@ module payby_marketplace::payby_marketplace {
     const E_LISTING_NOT_FOUND: u64 = 3;
     const E_UNSUPPORTED_POLICY: u64 = 4;
     const E_PAYMENT_ASSET_REQUIRED: u64 = 5;
+    const E_PURCHASE_UNAVAILABLE: u64 = 6;
+    const E_PRICE_REQUIRED: u64 = 7;
 
     const POLICY_FREE: u8 = 0;
     const POLICY_ALLOWLIST: u8 = 1;
@@ -37,6 +39,15 @@ module payby_marketplace::payby_marketplace {
         listing_keys: vector<String>,
     }
 
+    struct OwnerListings has store {
+        listings: Table<String, Listing>,
+        listing_keys: vector<String>,
+    }
+
+    struct OwnerRegistry has key {
+        owners: Table<address, OwnerListings>,
+    }
+
     struct ListingMetadata has store, copy, drop {
         metadata_uri: String,
         metadata_hash: String,
@@ -44,6 +55,22 @@ module payby_marketplace::payby_marketplace {
 
     struct MetadataRegistry has key {
         metadata: Table<String, ListingMetadata>,
+    }
+
+    struct OwnerMetadata has store {
+        metadata: Table<String, ListingMetadata>,
+    }
+
+    struct OwnerMetadataRegistry has key {
+        owners: Table<address, OwnerMetadata>,
+    }
+
+    struct BuyerPurchases has store {
+        creators: Table<address, vector<String>>,
+    }
+
+    struct PurchaseRegistry has key {
+        buyers: Table<address, BuyerPurchases>,
     }
 
     #[event]
@@ -91,6 +118,24 @@ module payby_marketplace::payby_marketplace {
         if (!exists<MetadataRegistry>(admin_addr)) {
             move_to(admin, MetadataRegistry {
                 metadata: table::new<String, ListingMetadata>(),
+            });
+        };
+
+        if (!exists<OwnerRegistry>(admin_addr)) {
+            move_to(admin, OwnerRegistry {
+                owners: table::new<address, OwnerListings>(),
+            });
+        };
+
+        if (!exists<OwnerMetadataRegistry>(admin_addr)) {
+            move_to(admin, OwnerMetadataRegistry {
+                owners: table::new<address, OwnerMetadata>(),
+            });
+        };
+
+        if (!exists<PurchaseRegistry>(admin_addr)) {
+            move_to(admin, PurchaseRegistry {
+                buyers: table::new<address, BuyerPurchases>(),
             });
         };
     }
@@ -170,6 +215,45 @@ module payby_marketplace::payby_marketplace {
         metadata_hash: String,
     ) acquires Registry, MetadataRegistry {
         upsert_listing_metadata_internal(owner, blob_name, metadata_uri, metadata_hash);
+    }
+
+    public entry fun upsert_listing_for_owner_with_metadata(
+        owner: &signer,
+        blob_name: String,
+        title: String,
+        policy: u8,
+        price: u64,
+        payment_metadata: address,
+        allowlist: vector<address>,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires OwnerRegistry, OwnerMetadataRegistry {
+        assert_supported_policy(policy, payment_metadata);
+        if (policy == POLICY_PAID) {
+            assert!(price > 0, E_PRICE_REQUIRED);
+        };
+        let owner_addr = signer::address_of(owner);
+        upsert_owner_listing_internal(
+            owner_addr,
+            blob_name,
+            title,
+            policy,
+            price,
+            payment_metadata,
+            allowlist,
+        );
+        upsert_owner_metadata_internal(owner_addr, blob_name, metadata_uri, metadata_hash);
+    }
+
+    public entry fun upsert_listing_metadata_for_owner(
+        owner: &signer,
+        blob_name: String,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires OwnerRegistry, OwnerMetadataRegistry {
+        let owner_addr = signer::address_of(owner);
+        assert_owner_listing(owner_addr, blob_name);
+        upsert_owner_metadata_internal(owner_addr, blob_name, metadata_uri, metadata_hash);
     }
 
     public entry fun create_listing(
@@ -271,6 +355,42 @@ module payby_marketplace::payby_marketplace {
         });
     }
 
+    public entry fun purchase_from(
+        buyer: &signer,
+        owner: address,
+        blob_name: String,
+    ) acquires OwnerRegistry, PurchaseRegistry {
+        let owner_registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        assert!(table::contains(&owner_registry.owners, owner), E_LISTING_NOT_FOUND);
+        let owner_listings = table::borrow(&owner_registry.owners, owner);
+        assert!(table::contains(&owner_listings.listings, blob_name), E_LISTING_NOT_FOUND);
+        let listing = table::borrow(&owner_listings.listings, blob_name);
+        assert!(listing.active, E_LISTING_NOT_FOUND);
+        assert!(listing.policy == POLICY_PAID, E_PURCHASE_UNAVAILABLE);
+        let price = listing.price;
+        let payment_metadata = listing.payment_metadata;
+
+        if (price > 0) {
+            let metadata = object::address_to_object<Metadata>(payment_metadata);
+            primary_fungible_store::transfer(
+                buyer,
+                metadata,
+                owner,
+                price,
+            );
+        };
+
+        let buyer_addr = signer::address_of(buyer);
+        record_owner_purchase(buyer_addr, owner, blob_name);
+
+        event::emit(ListingPurchased {
+            buyer: buyer_addr,
+            owner,
+            blob_name,
+            price,
+        });
+    }
+
     public entry fun delist(
         owner: &signer,
         blob_name: String,
@@ -283,6 +403,24 @@ module payby_marketplace::payby_marketplace {
 
         event::emit(ListingDelisted {
             owner: signer::address_of(owner),
+            blob_name,
+        });
+    }
+
+    public entry fun delist_for_owner(
+        owner: &signer,
+        blob_name: String,
+    ) acquires OwnerRegistry {
+        let owner_addr = signer::address_of(owner);
+        let registry = borrow_global_mut<OwnerRegistry>(@payby_marketplace);
+        assert!(table::contains(&registry.owners, owner_addr), E_LISTING_NOT_FOUND);
+        let owner_listings = table::borrow_mut(&mut registry.owners, owner_addr);
+        assert!(table::contains(&owner_listings.listings, blob_name), E_LISTING_NOT_FOUND);
+        let listing = table::borrow_mut(&mut owner_listings.listings, blob_name);
+        listing.active = false;
+
+        event::emit(ListingDelisted {
+            owner: owner_addr,
             blob_name,
         });
     }
@@ -310,6 +448,33 @@ module payby_marketplace::payby_marketplace {
     }
 
     #[view]
+    public fun get_listing_for_owner(owner: address, blob_name: String): (address, String, u8, u64, address, bool) acquires OwnerRegistry {
+        if (!exists<OwnerRegistry>(@payby_marketplace)) {
+            return (@0x0, std::string::utf8(b""), POLICY_FREE, 0, @0x0, false)
+        };
+
+        let registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return (@0x0, std::string::utf8(b""), POLICY_FREE, 0, @0x0, false)
+        };
+
+        let owner_listings = table::borrow(&registry.owners, owner);
+        if (!table::contains(&owner_listings.listings, blob_name)) {
+            return (@0x0, std::string::utf8(b""), POLICY_FREE, 0, @0x0, false)
+        };
+
+        let listing = table::borrow(&owner_listings.listings, blob_name);
+        (
+            listing.owner,
+            listing.title,
+            listing.policy,
+            listing.price,
+            listing.payment_metadata,
+            listing.active,
+        )
+    }
+
+    #[view]
     public fun get_listing_metadata(blob_name: String): (String, String, bool) acquires MetadataRegistry {
         if (!exists<MetadataRegistry>(@payby_marketplace)) {
             return (std::string::utf8(b""), std::string::utf8(b""), false)
@@ -321,6 +486,26 @@ module payby_marketplace::payby_marketplace {
         };
 
         let metadata = table::borrow(&registry.metadata, blob_name);
+        (metadata.metadata_uri, metadata.metadata_hash, true)
+    }
+
+    #[view]
+    public fun get_listing_metadata_for_owner(owner: address, blob_name: String): (String, String, bool) acquires OwnerMetadataRegistry {
+        if (!exists<OwnerMetadataRegistry>(@payby_marketplace)) {
+            return (std::string::utf8(b""), std::string::utf8(b""), false)
+        };
+
+        let registry = borrow_global<OwnerMetadataRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return (std::string::utf8(b""), std::string::utf8(b""), false)
+        };
+
+        let owner_metadata = table::borrow(&registry.owners, owner);
+        if (!table::contains(&owner_metadata.metadata, blob_name)) {
+            return (std::string::utf8(b""), std::string::utf8(b""), false)
+        };
+
+        let metadata = table::borrow(&owner_metadata.metadata, blob_name);
         (metadata.metadata_uri, metadata.metadata_hash, true)
     }
 
@@ -348,6 +533,39 @@ module payby_marketplace::payby_marketplace {
     }
 
     #[view]
+    public fun get_listing_count_for_owner(owner: address): u64 acquires OwnerRegistry {
+        if (!exists<OwnerRegistry>(@payby_marketplace)) {
+            return 0
+        };
+
+        let registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return 0
+        };
+
+        vector::length(&table::borrow(&registry.owners, owner).listing_keys)
+    }
+
+    #[view]
+    public fun get_listing_key_for_owner(owner: address, index: u64): String acquires OwnerRegistry {
+        if (!exists<OwnerRegistry>(@payby_marketplace)) {
+            return std::string::utf8(b"")
+        };
+
+        let registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return std::string::utf8(b"")
+        };
+
+        let owner_listings = table::borrow(&registry.owners, owner);
+        if (index >= vector::length(&owner_listings.listing_keys)) {
+            return std::string::utf8(b"")
+        };
+
+        *vector::borrow(&owner_listings.listing_keys, index)
+    }
+
+    #[view]
     public fun get_purchases(user: address): vector<String> acquires Registry {
         if (!exists<Registry>(@payby_marketplace)) {
             return vector::empty<String>()
@@ -359,6 +577,25 @@ module payby_marketplace::payby_marketplace {
         };
 
         *table::borrow(&registry.purchases, user)
+    }
+
+    #[view]
+    public fun get_purchases_from_owner(user: address, owner: address): vector<String> acquires PurchaseRegistry {
+        if (!exists<PurchaseRegistry>(@payby_marketplace)) {
+            return vector::empty<String>()
+        };
+
+        let registry = borrow_global<PurchaseRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, user)) {
+            return vector::empty<String>()
+        };
+
+        let buyer_purchases = table::borrow(&registry.buyers, user);
+        if (!table::contains(&buyer_purchases.creators, owner)) {
+            return vector::empty<String>()
+        };
+
+        *table::borrow(&buyer_purchases.creators, owner)
     }
 
     #[view]
@@ -390,6 +627,53 @@ module payby_marketplace::payby_marketplace {
                 return false
             };
             return vector::contains(table::borrow(&registry.purchases, user), &blob_name)
+        };
+
+        false
+    }
+
+    #[view]
+    public fun can_access_for_owner(owner: address, user: address, blob_name: String): bool acquires OwnerRegistry, PurchaseRegistry {
+        if (!exists<OwnerRegistry>(@payby_marketplace)) {
+            return false
+        };
+
+        let registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return false
+        };
+
+        let owner_listings = table::borrow(&registry.owners, owner);
+        if (!table::contains(&owner_listings.listings, blob_name)) {
+            return false
+        };
+
+        let listing = table::borrow(&owner_listings.listings, blob_name);
+        if (!listing.active) {
+            return false
+        };
+
+        if (listing.owner == user || listing.policy == POLICY_FREE) {
+            return true
+        };
+
+        if (listing.policy == POLICY_ALLOWLIST) {
+            return vector::contains(&listing.allowlist, &user)
+        };
+
+        if (listing.policy == POLICY_PAID) {
+            if (!exists<PurchaseRegistry>(@payby_marketplace)) {
+                return false
+            };
+            let purchase_registry = borrow_global<PurchaseRegistry>(@payby_marketplace);
+            if (!table::contains(&purchase_registry.buyers, user)) {
+                return false
+            };
+            let buyer_purchases = table::borrow(&purchase_registry.buyers, user);
+            if (!table::contains(&buyer_purchases.creators, owner)) {
+                return false
+            };
+            return vector::contains(table::borrow(&buyer_purchases.creators, owner), &blob_name)
         };
 
         false
@@ -482,5 +766,115 @@ module payby_marketplace::payby_marketplace {
             metadata_uri,
             metadata_hash,
         });
+    }
+
+    fun assert_owner_listing(owner: address, blob_name: String) acquires OwnerRegistry {
+        let registry = borrow_global<OwnerRegistry>(@payby_marketplace);
+        assert!(table::contains(&registry.owners, owner), E_LISTING_NOT_FOUND);
+        let owner_listings = table::borrow(&registry.owners, owner);
+        assert!(table::contains(&owner_listings.listings, blob_name), E_LISTING_NOT_FOUND);
+    }
+
+    fun upsert_owner_listing_internal(
+        owner: address,
+        blob_name: String,
+        title: String,
+        policy: u8,
+        price: u64,
+        payment_metadata: address,
+        allowlist: vector<address>,
+    ) acquires OwnerRegistry {
+        let registry = borrow_global_mut<OwnerRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            table::add(&mut registry.owners, owner, OwnerListings {
+                listings: table::new<String, Listing>(),
+                listing_keys: vector::empty<String>(),
+            });
+        };
+
+        let owner_listings = table::borrow_mut(&mut registry.owners, owner);
+        if (table::contains(&owner_listings.listings, blob_name)) {
+            let listing = table::borrow_mut(&mut owner_listings.listings, blob_name);
+            listing.title = title;
+            listing.policy = policy;
+            listing.price = price;
+            listing.payment_metadata = payment_metadata;
+            listing.allowlist = allowlist;
+            listing.active = true;
+        } else {
+            let listing = Listing {
+                owner,
+                blob_name,
+                title,
+                policy,
+                price,
+                payment_metadata,
+                allowlist,
+                active: true,
+            };
+            table::add(&mut owner_listings.listings, blob_name, listing);
+            vector::push_back(&mut owner_listings.listing_keys, blob_name);
+
+            event::emit(ListingCreated {
+                owner,
+                blob_name,
+                policy,
+                price,
+            });
+        };
+    }
+
+    fun upsert_owner_metadata_internal(
+        owner: address,
+        blob_name: String,
+        metadata_uri: String,
+        metadata_hash: String,
+    ) acquires OwnerMetadataRegistry {
+        let registry = borrow_global_mut<OwnerMetadataRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            table::add(&mut registry.owners, owner, OwnerMetadata {
+                metadata: table::new<String, ListingMetadata>(),
+            });
+        };
+
+        let owner_metadata = table::borrow_mut(&mut registry.owners, owner);
+        let metadata = ListingMetadata { metadata_uri, metadata_hash };
+        if (table::contains(&owner_metadata.metadata, blob_name)) {
+            let current = table::borrow_mut(&mut owner_metadata.metadata, blob_name);
+            current.metadata_uri = metadata.metadata_uri;
+            current.metadata_hash = metadata.metadata_hash;
+        } else {
+            table::add(&mut owner_metadata.metadata, blob_name, metadata);
+        };
+
+        event::emit(ListingMetadataUpdated {
+            owner,
+            blob_name,
+            metadata_uri,
+            metadata_hash,
+        });
+    }
+
+    fun record_owner_purchase(
+        buyer: address,
+        owner: address,
+        blob_name: String,
+    ) acquires PurchaseRegistry {
+        let registry = borrow_global_mut<PurchaseRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, buyer)) {
+            table::add(&mut registry.buyers, buyer, BuyerPurchases {
+                creators: table::new<address, vector<String>>(),
+            });
+        };
+
+        let buyer_purchases = table::borrow_mut(&mut registry.buyers, buyer);
+        if (!table::contains(&buyer_purchases.creators, owner)) {
+            table::add(&mut buyer_purchases.creators, owner, vector::empty<String>());
+        };
+
+        let purchases = table::borrow_mut(&mut buyer_purchases.creators, owner);
+        if (!vector::contains(purchases, &blob_name)) {
+            vector::push_back(purchases, blob_name);
+        };
     }
 }

@@ -572,14 +572,23 @@ function marketplaceFunction(
   functionName:
     | "upsert_listing"
     | "purchase"
+    | "purchase_from"
     | "can_access"
+    | "can_access_for_owner"
     | "get_listing"
+    | "get_listing_for_owner"
     | "get_listing_metadata"
+    | "get_listing_metadata_for_owner"
     | "get_listing_count"
+    | "get_listing_count_for_owner"
     | "get_listing_key"
+    | "get_listing_key_for_owner"
     | "get_purchases"
+    | "get_purchases_from_owner"
     | "upsert_listing_metadata"
-    | "upsert_listing_with_metadata",
+    | "upsert_listing_metadata_for_owner"
+    | "upsert_listing_with_metadata"
+    | "upsert_listing_for_owner_with_metadata",
 ): MoveFunctionId | "" {
   const address = PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress;
   return address
@@ -597,17 +606,26 @@ function policyIdToAccessMode(policy: number): AccessMode {
 
 async function readChainListing(
   selectedNetwork: PaybyNetwork,
+  owner: string,
   blobName: string,
 ): Promise<ChainListing | null> {
-  const functionId = marketplaceFunction(selectedNetwork, "get_listing");
-  if (!functionId) return null;
+  const ownerFunctionId = marketplaceFunction(selectedNetwork, "get_listing_for_owner");
+  const legacyFunctionId = marketplaceFunction(selectedNetwork, "get_listing");
+  if (!ownerFunctionId && !legacyFunctionId) return null;
 
-  const data = await callMarketplaceView(selectedNetwork, functionId, [blobName]);
+  let data: unknown[];
+  try {
+    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped listing unavailable.");
+    data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
+  } catch {
+    if (!legacyFunctionId) return null;
+    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
+  }
   const listing = parseChainListing(data);
   if (!listing.found) return listing;
 
   try {
-    const metadata = await readChainListingMetadata(selectedNetwork, blobName);
+    const metadata = await readChainListingMetadata(selectedNetwork, owner, blobName);
     if (metadata) {
       listing.metadataUri = metadata.metadataUri;
       listing.metadataHash = metadata.metadataHash;
@@ -669,12 +687,24 @@ function parseChainListing(data: unknown[]): ChainListing {
 
 async function readChainListingMetadata(
   selectedNetwork: PaybyNetwork,
+  owner: string,
   blobName: string,
 ) {
-  const functionId = marketplaceFunction(selectedNetwork, "get_listing_metadata");
-  if (!functionId) return null;
+  const ownerFunctionId = marketplaceFunction(
+    selectedNetwork,
+    "get_listing_metadata_for_owner",
+  );
+  const legacyFunctionId = marketplaceFunction(selectedNetwork, "get_listing_metadata");
+  if (!ownerFunctionId && !legacyFunctionId) return null;
 
-  const data = await callMarketplaceView(selectedNetwork, functionId, [blobName]);
+  let data: unknown[];
+  try {
+    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped metadata unavailable.");
+    data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
+  } catch {
+    if (!legacyFunctionId) return null;
+    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [blobName]);
+  }
   const [metadataUri, metadataHash, found] = data;
   if (!found) return null;
   return {
@@ -685,27 +715,52 @@ async function readChainListingMetadata(
 
 async function readChainAccess(
   selectedNetwork: PaybyNetwork,
+  owner: string,
   user: string,
   blobName: string,
 ): Promise<boolean | null> {
-  const functionId = marketplaceFunction(selectedNetwork, "can_access");
-  if (!functionId) return null;
+  const ownerFunctionId = marketplaceFunction(selectedNetwork, "can_access_for_owner");
+  const legacyFunctionId = marketplaceFunction(selectedNetwork, "can_access");
+  if (!ownerFunctionId && !legacyFunctionId) return null;
 
-  const data = await callMarketplaceView(selectedNetwork, functionId, [
-    user,
-    blobName,
-  ]);
+  let data: unknown[];
+  try {
+    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped access unavailable.");
+    data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [
+      owner,
+      user,
+      blobName,
+    ]);
+  } catch {
+    if (!legacyFunctionId) return null;
+    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [
+      user,
+      blobName,
+    ]);
+  }
   return Boolean(data[0]);
 }
 
 async function readChainPurchases(
   selectedNetwork: PaybyNetwork,
   buyer: string,
+  owner: string,
 ): Promise<string[] | null> {
-  const functionId = marketplaceFunction(selectedNetwork, "get_purchases");
-  if (!functionId) return null;
+  const ownerFunctionId = marketplaceFunction(
+    selectedNetwork,
+    "get_purchases_from_owner",
+  );
+  const legacyFunctionId = marketplaceFunction(selectedNetwork, "get_purchases");
+  if (!ownerFunctionId && !legacyFunctionId) return null;
 
-  const data = await callMarketplaceView(selectedNetwork, functionId, [buyer]);
+  let data: unknown[];
+  try {
+    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped purchase list unavailable.");
+    data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [buyer, owner]);
+  } catch {
+    if (!legacyFunctionId) return null;
+    data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [buyer]);
+  }
   const purchases = Array.isArray(data[0]) ? data[0] : data;
   return purchases.map((item) => item?.toString() ?? "").filter(Boolean);
 }
@@ -729,20 +784,54 @@ async function readChainListingKey(
   return data[0]?.toString() || "";
 }
 
+async function readOwnerChainListingCount(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+) {
+  const functionId = marketplaceFunction(
+    selectedNetwork,
+    "get_listing_count_for_owner",
+  );
+  if (!functionId || !owner) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [owner]);
+  return Number(data[0] ?? 0);
+}
+
+async function readOwnerChainListingKey(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+  index: number,
+) {
+  const functionId = marketplaceFunction(selectedNetwork, "get_listing_key_for_owner");
+  if (!functionId || !owner) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [
+    owner,
+    String(index),
+  ]);
+  return data[0]?.toString() || "";
+}
+
 async function readCreatorChainListings(
   selectedNetwork: PaybyNetwork,
   owner: string,
   limit = 120,
 ) {
-  const count = await readChainListingCount(selectedNetwork);
+  const ownerCount = await readOwnerChainListingCount(selectedNetwork, owner).catch(
+    () => null,
+  );
+  const count = ownerCount ?? (await readChainListingCount(selectedNetwork));
   if (count === null) return [];
 
   const capped = Math.min(count, limit);
   const listings: Array<{ blobName: string; listing: ChainListing }> = [];
   for (let index = 0; index < capped; index += 1) {
-    const blobName = await readChainListingKey(selectedNetwork, index);
+    const blobName = ownerCount === null
+      ? await readChainListingKey(selectedNetwork, index)
+      : await readOwnerChainListingKey(selectedNetwork, owner, index);
     if (!blobName) continue;
-    const listing = await readChainListing(selectedNetwork, blobName);
+    const listing = await readChainListing(selectedNetwork, owner, blobName);
     if (
       listing?.found &&
       listing.owner.toLowerCase() === owner.toLowerCase()
@@ -783,6 +872,7 @@ function metadataFromChainListing(
 function getAccessRegistryBlocker(
   selectedNetwork: PaybyNetwork,
   accessMode: AccessMode,
+  price = "",
 ) {
   const network = PAYBY_NETWORKS[selectedNetwork];
   if (!CHAIN_SUPPORTED_ACCESS_MODES.has(accessMode)) {
@@ -793,6 +883,9 @@ function getAccessRegistryBlocker(
   }
   if (accessMode === "paid" && !network.paymentAssetMetadataAddress) {
     return "Set the payment asset metadata address before publishing paid unlocks.";
+  }
+  if (accessMode === "paid" && parseAssetUnits(price) <= 0) {
+    return "Set a paid unlock price greater than 0 before registering on-chain access.";
   }
   return "";
 }
@@ -1155,12 +1248,12 @@ async function loadOnChainPurchaseIndex(
   buyer: string,
   network: PaybyNetwork,
 ): Promise<PurchaseReceipt[]> {
-  const blobNames = await readChainPurchases(network, buyer);
+  const blobNames = await readChainPurchases(network, buyer, "");
   if (!blobNames) return [];
 
   const receipts: PurchaseReceipt[] = [];
   for (const blobName of blobNames) {
-    const listing = await readChainListing(network, blobName);
+    const listing = await readChainListing(network, "", blobName);
     if (!listing?.found) continue;
     const committedMetadata = await fetchCommittedMetadata(
       network,
@@ -2361,6 +2454,7 @@ function UploadPanel({
   const accessRegistryBlocker = getAccessRegistryBlocker(
     selectedNetwork,
     accessMode,
+    price,
   );
   const accessRegistryReady = !accessRegistryBlocker;
   const canUpload =
@@ -2406,7 +2500,7 @@ function UploadPanel({
 
     const functionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_with_metadata",
+      "upsert_listing_for_owner_with_metadata",
     );
     if (!functionId || !account) return;
 
@@ -3799,7 +3893,7 @@ function MediaDetailPage({
 
       setChainListingState("checking");
       try {
-        const listing = await readChainListing(selectedNetwork, blobName);
+        const listing = await readChainListing(selectedNetwork, owner, blobName);
         if (cancelled) return;
         setChainListing(listing);
         setChainListingState(listing?.found ? "found" : "missing");
@@ -3833,7 +3927,7 @@ function MediaDetailPage({
     }
     const functionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_with_metadata",
+      "upsert_listing_for_owner_with_metadata",
     );
     if (!functionId) {
       setActionMessage("Payby marketplace contract is not configured.");
@@ -3862,7 +3956,7 @@ function MediaDetailPage({
       const hash = getTransactionHash(response);
       setActionMessage("Registry repair submitted. Waiting for Aptos finality.");
       await waitForTransaction(selectedNetwork, hash);
-      const listing = await readChainListing(selectedNetwork, blobName);
+      const listing = await readChainListing(selectedNetwork, owner, blobName);
       setChainListing(listing);
       setChainListingState(listing?.found ? "found" : "missing");
       setActionMessage("Access policy repaired on-chain.");
@@ -3906,7 +4000,7 @@ function MediaDetailPage({
 
     const functionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_with_metadata",
+      "upsert_listing_for_owner_with_metadata",
     );
     if (!functionId) {
       setActionMessage("Payby marketplace contract is not configured.");
@@ -3940,7 +4034,7 @@ function MediaDetailPage({
       setActionMessage("Allowlist update submitted. Waiting for Aptos finality.");
       await waitForTransaction(selectedNetwork, hash);
       metadataStore.saveMetadata([nextMetadata]);
-      const listing = await readChainListing(selectedNetwork, blobName);
+      const listing = await readChainListing(selectedNetwork, owner, blobName);
       setChainListing(listing);
       setChainListingState(listing?.found ? "found" : "missing");
       setActionMessage("Allowlist policy updated on-chain.");
@@ -4652,6 +4746,7 @@ function BuyerLibraryPanel({
     try {
       const access = await readChainAccess(
         receipt.network,
+        receipt.creator,
         accountAddress,
         receipt.blobName,
       );
@@ -5183,7 +5278,7 @@ function PublicMediaPage({
 
     let cancelled = false;
     setChainListingState("checking");
-    void readChainListing(selectedNetwork, blobName)
+    void readChainListing(selectedNetwork, owner, blobName)
       .then((listing) => {
         if (cancelled) return;
         setChainListing(listing);
@@ -5198,7 +5293,7 @@ function PublicMediaPage({
     return () => {
       cancelled = true;
     };
-  }, [blobName, marketplaceConfigured, selectedNetwork]);
+  }, [blobName, marketplaceConfigured, owner, selectedNetwork]);
 
   React.useEffect(() => {
     if (!chainListing?.found || !chainListing.metadataUri || !chainListing.metadataHash) {
@@ -5237,7 +5332,7 @@ function PublicMediaPage({
 
     let cancelled = false;
     setChainAccessState("checking");
-    void readChainAccess(selectedNetwork, buyerAddress, blobName)
+    void readChainAccess(selectedNetwork, owner, buyerAddress, blobName)
       .then((allowed) => {
         if (cancelled) return;
         setChainAccessAllowed(allowed);
@@ -5254,7 +5349,7 @@ function PublicMediaPage({
     return () => {
       cancelled = true;
     };
-  }, [blobName, buyerAddress, marketplaceConfigured, selectedNetwork]);
+  }, [blobName, buyerAddress, marketplaceConfigured, owner, selectedNetwork]);
 
   React.useEffect(() => {
     if (!recoveredReceipt || purchaseReceipt || unlockMessage) return;
@@ -5271,7 +5366,9 @@ function PublicMediaPage({
     }
     if (!account) throw new Error("Connect a wallet before purchasing.");
 
-    const functionId = marketplaceFunction(selectedNetwork, "purchase");
+    const functionId =
+      marketplaceFunction(selectedNetwork, "purchase_from") ||
+      marketplaceFunction(selectedNetwork, "purchase");
     if (!functionId) {
       throw new Error("Payby marketplace contract is not configured.");
     }
@@ -5280,7 +5377,9 @@ function PublicMediaPage({
     const response = await signAndSubmitTransaction({
       data: {
         function: functionId,
-        functionArguments: [blobName],
+        functionArguments: functionId.includes("::purchase_from")
+          ? [owner, blobName]
+          : [blobName],
       },
     });
     const hash = getTransactionHash(response);
@@ -5343,7 +5442,12 @@ function PublicMediaPage({
         }
 
         setUnlockMessage("Checking wallet access on Aptos.");
-        const access = await readChainAccess(selectedNetwork, getAccountAddress(account), blobName);
+        const access = await readChainAccess(
+          selectedNetwork,
+          owner,
+          getAccountAddress(account),
+          blobName,
+        );
         setChainAccessAllowed(access);
         setChainAccessState(
           access === null ? "unconfigured" : access ? "allowed" : "denied",
@@ -5357,6 +5461,7 @@ function PublicMediaPage({
           latestReceipt = await submitPaidUnlockPurchase();
           const verifiedAccess = await readChainAccess(
             selectedNetwork,
+            owner,
             getAccountAddress(account),
             blobName,
           );
