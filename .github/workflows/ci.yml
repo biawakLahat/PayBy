@@ -8,7 +8,7 @@ on:
 
 jobs:
   web:
-    name: Web and gateway checks
+    name: Web checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,9 +23,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check gateway syntax
-        run: npm run check:gateway
-
       - name: Build frontend
-        run: npm run build
-
+        run: npm run verify
