@@ -232,6 +232,18 @@ type ChainListing = {
   metadataHash: string;
   active: boolean;
 };
+type ChainPurchaseRecord = {
+  owner: string;
+  blobName: string;
+  price: string;
+  paymentMetadata: string;
+  purchasedAtSecs: number;
+  found: boolean;
+};
+type CreatorSalesSummary = {
+  saleCount: number;
+  revenue: string;
+};
 type ChainAccessProofState =
   | "unknown"
   | "checking"
@@ -567,6 +579,42 @@ function parseAssetUnits(value: string) {
   return Math.round(parsed * 100_000_000);
 }
 
+function formatAssetUnits(value: string | number, currency: "APT" | "SHELBYUSD" = "APT") {
+  const units = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(units) || units <= 0) return `0 ${currency}`;
+  const amount = units / 100_000_000;
+  return `${new Intl.NumberFormat("en", {
+    maximumFractionDigits: 8,
+  }).format(amount)} ${currency}`;
+}
+
+function userFacingError(error: unknown, fallback: string) {
+  const raw = error instanceof Error ? error.message : "";
+  const message = raw || fallback;
+  const lower = message.toLowerCase();
+
+  if (lower.includes("user rejected") || lower.includes("rejected")) {
+    return "Wallet approval was rejected.";
+  }
+  if (lower.includes("e_already_purchased") || lower.includes("already_purchased")) {
+    return "This wallet already purchased this media. Refresh access proof and unlock again.";
+  }
+  if (lower.includes("e_price_required") || lower.includes("price_required")) {
+    return "This paid listing has no valid on-chain price.";
+  }
+  if (lower.includes("e_payment_asset_required") || lower.includes("payment_asset_required")) {
+    return "Payment asset metadata is missing for this paid listing.";
+  }
+  if (lower.includes("insufficient") || lower.includes("balance")) {
+    return "Wallet balance is not enough for this transaction.";
+  }
+  if (lower.includes("simulation") || lower.includes("vmstatus")) {
+    return "Aptos rejected the transaction during validation. Check network, balance, and listing state.";
+  }
+
+  return message;
+}
+
 function marketplaceFunction(
   selectedNetwork: PaybyNetwork,
   functionName:
@@ -585,6 +633,9 @@ function marketplaceFunction(
     | "get_listing_key_for_owner"
     | "get_purchases"
     | "get_purchases_from_owner"
+    | "get_purchase_record_count"
+    | "get_purchase_record"
+    | "get_sales_summary"
     | "upsert_listing_metadata"
     | "upsert_listing_metadata_for_owner"
     | "upsert_listing_with_metadata"
@@ -795,6 +846,77 @@ async function readChainPurchases(
   data = await callMarketplaceView(selectedNetwork, legacyFunctionId, [buyer]);
   const purchases = Array.isArray(data[0]) ? data[0] : data;
   return purchases.map((item) => item?.toString() ?? "").filter(Boolean);
+}
+
+async function readChainPurchaseRecordCount(
+  selectedNetwork: PaybyNetwork,
+  buyer: string,
+) {
+  const functionId = marketplaceFunction(selectedNetwork, "get_purchase_record_count");
+  if (!functionId || !buyer) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [buyer]);
+  return Number(data[0] ?? 0);
+}
+
+async function readChainPurchaseRecord(
+  selectedNetwork: PaybyNetwork,
+  buyer: string,
+  index: number,
+): Promise<ChainPurchaseRecord | null> {
+  const functionId = marketplaceFunction(selectedNetwork, "get_purchase_record");
+  if (!functionId || !buyer) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [
+    buyer,
+    String(index),
+  ]);
+  const [owner, blobName, price, paymentMetadata, purchasedAtSecs, found] = data;
+  return {
+    owner: owner?.toString() ?? "",
+    blobName: blobName?.toString() ?? "",
+    price: price?.toString() ?? "0",
+    paymentMetadata: paymentMetadata?.toString() ?? "",
+    purchasedAtSecs: Number(purchasedAtSecs ?? 0),
+    found: Boolean(found),
+  };
+}
+
+async function readBuyerPurchaseRecords(
+  selectedNetwork: PaybyNetwork,
+  buyer: string,
+  limit = 120,
+) {
+  const count = await readChainPurchaseRecordCount(selectedNetwork, buyer).catch(
+    () => null,
+  );
+  if (!count) return null;
+
+  const records: ChainPurchaseRecord[] = [];
+  const capped = Math.min(count, limit);
+  for (let index = 0; index < capped; index += 1) {
+    const record = await readChainPurchaseRecord(
+      selectedNetwork,
+      buyer,
+      index,
+    ).catch(() => null);
+    if (record?.found && record.owner && record.blobName) records.push(record);
+  }
+  return records;
+}
+
+async function readCreatorSalesSummary(
+  selectedNetwork: PaybyNetwork,
+  owner: string,
+): Promise<CreatorSalesSummary | null> {
+  const functionId = marketplaceFunction(selectedNetwork, "get_sales_summary");
+  if (!functionId || !owner) return null;
+
+  const data = await callMarketplaceView(selectedNetwork, functionId, [owner]);
+  return {
+    saleCount: Number(data[0] ?? 0),
+    revenue: data[1]?.toString() ?? "0",
+  };
 }
 
 async function readChainListingCount(selectedNetwork: PaybyNetwork) {
@@ -1283,12 +1405,47 @@ async function loadOnChainPurchaseIndex(
   buyer: string,
   network: PaybyNetwork,
 ): Promise<PurchaseReceipt[]> {
+  const records = await readBuyerPurchaseRecords(network, buyer).catch(() => null);
+  const receipts: PurchaseReceipt[] = [];
+
+  if (records && records.length > 0) {
+    for (const record of records) {
+      const listing = await readChainListing(
+        network,
+        record.owner,
+        record.blobName,
+      ).catch(() => null);
+      if (!listing?.found) continue;
+      const committedMetadata = await fetchCommittedMetadata(
+        network,
+        record.owner,
+        record.blobName,
+        listing,
+      ).catch(() => null);
+      receipts.push({
+        hash: "",
+        network,
+        buyer,
+        creator: record.owner,
+        blobName: record.blobName,
+        title: committedMetadata?.title || listing.title || record.blobName,
+        accessMode: policyIdToAccessMode(listing.policy),
+        accessType: "purchase",
+        price: record.price || listing.price,
+        currency: committedMetadata?.currency || "APT",
+        confirmedAt: record.purchasedAtSecs
+          ? record.purchasedAtSecs * 1000
+          : Date.now(),
+      });
+    }
+    return receipts;
+  }
+
   const blobNames = await readChainPurchases(network, buyer, "");
   if (!blobNames) return [];
 
-  const receipts: PurchaseReceipt[] = [];
   for (const blobName of blobNames) {
-    const listing = await readChainListing(network, "", blobName);
+    const listing = await readChainListing(network, "", blobName).catch(() => null);
     if (!listing?.found) continue;
     const committedMetadata = await fetchCommittedMetadata(
       network,
@@ -1598,6 +1755,7 @@ function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
         selectedNetwork={selectedNetwork}
         metadataStore={metadataStore}
         purchaseStore={purchaseStore}
+        transactionStore={transactionStore}
         profile={profileStore.profile}
         onOpenApp={() => navigate({ name: "vault" })}
       />
@@ -2449,7 +2607,7 @@ function UploadPanel({
       );
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : "Upload failed.";
+      const message = userFacingError(error, "Upload failed.");
       pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
         status: "failed",
         error: message,
@@ -2585,10 +2743,10 @@ function UploadPanel({
           });
         }
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Access registry transaction failed.";
+        const message = userFacingError(
+          error,
+          "Access registry transaction failed.",
+        );
         setPublishPhase("error");
         setRegistryRetryItems(registryItems);
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
@@ -2788,10 +2946,10 @@ function UploadPanel({
         );
         return response;
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Wallet rejected or failed to submit the transaction.";
+        const message = userFacingError(
+          error,
+          "Wallet rejected or failed to submit the transaction.",
+        );
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
           status: "failed",
           error: message,
@@ -3300,6 +3458,10 @@ function VaultList({
     "idle" | "checking" | "synced" | "unavailable" | "error"
   >("idle");
   const [chainListingCount, setChainListingCount] = React.useState(0);
+  const [salesSummary, setSalesSummary] = React.useState<CreatorSalesSummary>({
+    saleCount: 0,
+    revenue: "0",
+  });
   const network = PAYBY_NETWORKS[selectedNetwork];
   const walletNetworkAligned = isWalletNetworkAligned(
     walletNetwork,
@@ -3325,7 +3487,7 @@ function VaultList({
       void blobsQuery.refetch();
     },
     onError: (error) => {
-      setActionMessage(error instanceof Error ? error.message : "Delete failed.");
+      setActionMessage(userFacingError(error, "Delete failed."));
     },
   });
 
@@ -3427,6 +3589,26 @@ function VaultList({
   }, [accountAddress, selectedNetwork]);
 
   React.useEffect(() => {
+    if (!accountAddress || !PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress) {
+      setSalesSummary({ saleCount: 0, revenue: "0" });
+      return;
+    }
+
+    let cancelled = false;
+    void readCreatorSalesSummary(selectedNetwork, accountAddress)
+      .then((summary) => {
+        if (!cancelled) setSalesSummary(summary ?? { saleCount: 0, revenue: "0" });
+      })
+      .catch(() => {
+        if (!cancelled) setSalesSummary({ saleCount: 0, revenue: "0" });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountAddress, selectedNetwork]);
+
+  React.useEffect(() => {
     pendingPublishStore.markIndexed(
       accountAddress,
       selectedNetwork,
@@ -3499,6 +3681,14 @@ function VaultList({
           <span>Expiring</span>
           <strong>{expiringSoonCount}</strong>
         </div>
+        <div>
+          <span>Sales</span>
+          <strong>{salesSummary.saleCount}</strong>
+        </div>
+        <div>
+          <span>Revenue</span>
+          <strong>{formatAssetUnits(salesSummary.revenue)}</strong>
+        </div>
       </div>
 
       <label className="search-box">
@@ -3539,6 +3729,25 @@ function VaultList({
           Refresh registry
           <ShieldCheck size={15} />
         </button>
+      </div>
+
+      <div className="library-source-banner creator-insight-banner">
+        <CreditCard size={18} />
+        <div>
+          <strong>
+            {salesSummary.saleCount > 0
+              ? `${salesSummary.saleCount} on-chain ${salesSummary.saleCount === 1 ? "sale" : "sales"} recorded`
+              : "No on-chain sales yet"}
+          </strong>
+          <p>
+            Creator revenue is read from the Payby marketplace contract. Paid
+            unlocks transfer the configured asset to the creator and update this
+            summary after finality.
+          </p>
+        </div>
+        <span className="creator-revenue-pill">
+          {formatAssetUnits(salesSummary.revenue)}
+        </span>
       </div>
 
       {(actionMessage || (!walletNetworkAligned && accountAddress)) && (
@@ -3881,7 +4090,7 @@ function MediaDetailPage({
       onNavigate({ name: "vault" });
     },
     onError: (error) => {
-      setActionMessage(error instanceof Error ? error.message : "Delete failed.");
+      setActionMessage(userFacingError(error, "Delete failed."));
     },
   });
   const shelbyBlobUrl = getDownloadUrl(selectedNetwork, owner, blobName);
@@ -4002,9 +4211,7 @@ function MediaDetailPage({
       });
     } catch (error) {
       setChainListingState("error");
-      setActionMessage(
-        error instanceof Error ? error.message : "Registry repair failed.",
-      );
+      setActionMessage(userFacingError(error, "Registry repair failed."));
     } finally {
       setRegistryRepairing(false);
     }
@@ -4079,9 +4286,7 @@ function MediaDetailPage({
         detail: blobName,
       });
     } catch (error) {
-      setActionMessage(
-        error instanceof Error ? error.message : "Allowlist update failed.",
-      );
+      setActionMessage(userFacingError(error, "Allowlist update failed."));
     } finally {
       setAllowlistSaving(false);
     }
@@ -4177,7 +4382,7 @@ function MediaDetailPage({
               <span>Policy price</span>
               <strong>
                 {chainListing?.found
-                  ? `${chainListing.price} units`
+                  ? formatAssetUnits(chainListing.price, metadata?.currency ?? "APT")
                   : metadata?.price
                     ? `${metadata.price} ${metadata.currency}`
                     : "0"}
@@ -4719,6 +4924,7 @@ function BuyerLibraryPanel({
     "idle" | "checking" | "ready"
   >("idle");
   const [copiedKey, setCopiedKey] = React.useState("");
+  const [libraryPage, setLibraryPage] = React.useState(1);
   const [accessProofs, setAccessProofs] = React.useState<
     Record<string, ChainAccessProofState>
   >({});
@@ -4739,6 +4945,11 @@ function BuyerLibraryPanel({
     (receipt) => receipt.accessType === "session",
   ).length;
   const lastReceipt = receipts[0];
+  const {
+    pageItems: paginatedReceipts,
+    pageCount: libraryPageCount,
+    safePage: safeLibraryPage,
+  } = paginateItems(receipts, libraryPage, VAULT_PAGE_SIZE);
 
   React.useEffect(() => {
     if (!accountAddress) {
@@ -4762,6 +4973,10 @@ function BuyerLibraryPanel({
       cancelled = true;
     };
   }, [accountAddress, selectedNetwork, upsertReceipt]);
+
+  React.useEffect(() => {
+    setLibraryPage(1);
+  }, [accountAddress, selectedNetwork, receipts.length]);
 
   async function copyShareLink(receipt: PurchaseReceipt) {
     await navigator.clipboard.writeText(getShareUrl(receipt.creator, receipt.blobName));
@@ -4848,13 +5063,13 @@ function BuyerLibraryPanel({
             {indexState === "checking"
               ? "Checking on-chain purchase index"
               : indexState === "ready"
-                ? "Local cache active, on-chain adapter ready"
+                ? "Purchase index synced"
                 : "Connect wallet to load buyer receipts"}
           </strong>
           <p>
-            Payby restores local receipts first, then refreshes purchases from
-            the marketplace registry when the deployed contract exposes purchase
-            index views.
+            Payby restores local receipts first, then refreshes buyer purchase
+            records from the marketplace contract when the current deployment
+            exposes indexed purchase views.
           </p>
         </div>
       </div>
@@ -4870,8 +5085,9 @@ function BuyerLibraryPanel({
           body="Unlock a shared Payby media link and it will appear here for this wallet."
         />
       ) : (
-        <ul className="buyer-library-list">
-          {receipts.map((receipt) => {
+        <>
+          <ul className="buyer-library-list">
+          {paginatedReceipts.map((receipt) => {
             const metadata =
               metadataStore.metadata[createMediaKey(receipt.creator, receipt.blobName)];
             const title = metadata?.title || receipt.title || receipt.blobName;
@@ -4894,8 +5110,8 @@ function BuyerLibraryPanel({
                     {accessModeLabel(receipt.accessMode)} - {shortenAddress(receipt.creator)}
                   </p>
                   <span>
-                    {receipt.accessType === "purchase"
-                      ? `${receipt.price || "0"} ${receipt.currency}`
+                  {receipt.accessType === "purchase"
+                      ? formatAssetUnits(receipt.price || "0", receipt.currency)
                       : "Wallet session"}{" "}
                     - {new Date(receipt.confirmedAt).toLocaleString()}
                   </span>
@@ -4947,7 +5163,16 @@ function BuyerLibraryPanel({
               </li>
             );
           })}
-        </ul>
+          </ul>
+          <PaginationControls
+            label="Buyer library pagination"
+            page={safeLibraryPage}
+            pageCount={libraryPageCount}
+            total={receipts.length}
+            pageSize={VAULT_PAGE_SIZE}
+            onPageChange={setLibraryPage}
+          />
+        </>
       )}
     </section>
   );
@@ -5172,9 +5397,7 @@ function PurchaseReceiptCard({ receipt }: { receipt: PurchaseReceipt }) {
         </div>
         <div>
           <span>Price</span>
-          <strong>
-            {receipt.price || "0"} {receipt.currency}
-          </strong>
+          <strong>{formatAssetUnits(receipt.price || "0", receipt.currency)}</strong>
         </div>
         <div>
           <span>Buyer</span>
@@ -5207,6 +5430,7 @@ function PublicMediaPage({
   selectedNetwork,
   metadataStore,
   purchaseStore,
+  transactionStore,
   profile,
   onOpenApp,
 }: {
@@ -5214,6 +5438,7 @@ function PublicMediaPage({
   selectedNetwork: PaybyNetwork;
   metadataStore: ReturnType<typeof useStoredMetadata>;
   purchaseStore: ReturnType<typeof usePurchaseReceipts>;
+  transactionStore: ReturnType<typeof useTransactionHistory>;
   profile: CreatorProfile;
   onOpenApp: () => void;
 }) {
@@ -5261,7 +5486,7 @@ function PublicMediaPage({
       : metadata?.title || blobName;
   const effectivePrice =
     chainListing?.found && chainListing.price !== "0"
-      ? `${chainListing.price} units`
+      ? formatAssetUnits(chainListing.price, metadata?.currency ?? "APT")
       : metadata?.price
         ? `${metadata.price} ${metadata.currency}`
         : "";
@@ -5422,10 +5647,31 @@ function PublicMediaPage({
       throw new Error("Wallet submitted the purchase, but no transaction hash was returned.");
     }
 
+    transactionStore.upsertTransaction({
+      id: crypto.randomUUID(),
+      hash,
+      network: selectedNetwork,
+      status: "pending",
+      label: "Paid media unlock",
+      detail: `Paying ${effectivePrice || "configured price"} to ${shortenAddress(owner)}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     setUnlockMessage(
       "Purchase submitted. Waiting for Aptos confirmation before unlocking.",
     );
-    await waitForTransaction(selectedNetwork, hash);
+    try {
+      await waitForTransaction(selectedNetwork, hash);
+    } catch (error) {
+      transactionStore.updateTransaction(hash, {
+        status: "failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Paid unlock transaction failed.",
+      });
+      throw error;
+    }
     const receipt: PurchaseReceipt = {
       hash,
       network: selectedNetwork,
@@ -5444,6 +5690,10 @@ function PublicMediaPage({
     };
     setPurchaseReceipt(receipt);
     purchaseStore.upsertReceipt(receipt);
+    transactionStore.updateTransaction(hash, {
+      status: "confirmed",
+      detail: `${effectiveTitle} unlocked for ${formatAssetUnits(receipt.price, receipt.currency)}.`,
+    });
     setUnlockMessage("Purchase confirmed. Aptos access proof is ready.");
     return receipt;
   }
@@ -5541,9 +5791,7 @@ function PublicMediaPage({
       }
     } catch (error) {
       setUnlockState("denied");
-      setUnlockMessage(
-        error instanceof Error ? error.message : "Could not unlock this media.",
-      );
+      setUnlockMessage(userFacingError(error, "Could not unlock this media."));
     }
   }
 

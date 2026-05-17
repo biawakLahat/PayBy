@@ -6,6 +6,7 @@ module payby_marketplace::payby_marketplace {
     use aptos_framework::object;
     use aptos_framework::primary_fungible_store;
     use aptos_framework::signer;
+    use aptos_framework::timestamp;
     use aptos_std::table::{Self, Table};
 
     const E_NOT_AUTHORIZED: u64 = 1;
@@ -15,6 +16,7 @@ module payby_marketplace::payby_marketplace {
     const E_PAYMENT_ASSET_REQUIRED: u64 = 5;
     const E_PURCHASE_UNAVAILABLE: u64 = 6;
     const E_PRICE_REQUIRED: u64 = 7;
+    const E_ALREADY_PURCHASED: u64 = 8;
 
     const POLICY_FREE: u8 = 0;
     const POLICY_ALLOWLIST: u8 = 1;
@@ -71,6 +73,31 @@ module payby_marketplace::payby_marketplace {
 
     struct PurchaseRegistry has key {
         buyers: Table<address, BuyerPurchases>,
+    }
+
+    struct BuyerPurchaseRecord has store, copy, drop {
+        owner: address,
+        blob_name: String,
+        price: u64,
+        payment_metadata: address,
+        purchased_at_secs: u64,
+    }
+
+    struct BuyerPurchaseRecords has store {
+        records: vector<BuyerPurchaseRecord>,
+    }
+
+    struct PurchaseIndex has key {
+        buyers: Table<address, BuyerPurchaseRecords>,
+    }
+
+    struct OwnerSalesStats has store, copy, drop {
+        sale_count: u64,
+        revenue: u64,
+    }
+
+    struct SalesRegistry has key {
+        owners: Table<address, OwnerSalesStats>,
     }
 
     #[event]
@@ -136,6 +163,18 @@ module payby_marketplace::payby_marketplace {
         if (!exists<PurchaseRegistry>(admin_addr)) {
             move_to(admin, PurchaseRegistry {
                 buyers: table::new<address, BuyerPurchases>(),
+            });
+        };
+
+        if (!exists<PurchaseIndex>(admin_addr)) {
+            move_to(admin, PurchaseIndex {
+                buyers: table::new<address, BuyerPurchaseRecords>(),
+            });
+        };
+
+        if (!exists<SalesRegistry>(admin_addr)) {
+            move_to(admin, SalesRegistry {
+                owners: table::new<address, OwnerSalesStats>(),
             });
         };
     }
@@ -319,7 +358,7 @@ module payby_marketplace::payby_marketplace {
     public entry fun purchase(
         buyer: &signer,
         blob_name: String,
-    ) acquires Registry {
+    ) acquires Registry, SalesRegistry {
         let registry = borrow_global_mut<Registry>(@payby_marketplace);
         assert!(table::contains(&registry.listings, blob_name), E_LISTING_NOT_FOUND);
         let listing = table::borrow(&registry.listings, blob_name);
@@ -327,25 +366,25 @@ module payby_marketplace::payby_marketplace {
         let owner = listing.owner;
         let price = listing.price;
         let payment_metadata = listing.payment_metadata;
-
-        if (price > 0) {
-            let metadata = object::address_to_object<Metadata>(payment_metadata);
-            primary_fungible_store::transfer(
-                buyer,
-                metadata,
-                owner,
-                price,
-            );
-        };
-
         let buyer_addr = signer::address_of(buyer);
+
         if (!table::contains(&registry.purchases, buyer_addr)) {
             table::add(&mut registry.purchases, buyer_addr, vector::empty<String>());
         };
         let purchases = table::borrow_mut(&mut registry.purchases, buyer_addr);
-        if (!vector::contains(purchases, &blob_name)) {
-            vector::push_back(purchases, blob_name);
-        };
+        assert!(!vector::contains(purchases, &blob_name), E_ALREADY_PURCHASED);
+        assert!(price > 0, E_PRICE_REQUIRED);
+
+        let metadata = object::address_to_object<Metadata>(payment_metadata);
+        primary_fungible_store::transfer(
+            buyer,
+            metadata,
+            owner,
+            price,
+        );
+
+        vector::push_back(purchases, blob_name);
+        record_owner_sale(owner, price);
 
         event::emit(ListingPurchased {
             buyer: buyer_addr,
@@ -359,7 +398,7 @@ module payby_marketplace::payby_marketplace {
         buyer: &signer,
         owner: address,
         blob_name: String,
-    ) acquires OwnerRegistry, PurchaseRegistry {
+    ) acquires OwnerRegistry, PurchaseRegistry, PurchaseIndex, SalesRegistry {
         let owner_registry = borrow_global<OwnerRegistry>(@payby_marketplace);
         assert!(table::contains(&owner_registry.owners, owner), E_LISTING_NOT_FOUND);
         let owner_listings = table::borrow(&owner_registry.owners, owner);
@@ -369,19 +408,31 @@ module payby_marketplace::payby_marketplace {
         assert!(listing.policy == POLICY_PAID, E_PURCHASE_UNAVAILABLE);
         let price = listing.price;
         let payment_metadata = listing.payment_metadata;
-
-        if (price > 0) {
-            let metadata = object::address_to_object<Metadata>(payment_metadata);
-            primary_fungible_store::transfer(
-                buyer,
-                metadata,
-                owner,
-                price,
-            );
-        };
-
         let buyer_addr = signer::address_of(buyer);
+
+        assert!(price > 0, E_PRICE_REQUIRED);
+        assert!(
+            !has_owner_purchase_internal(buyer_addr, owner, &blob_name),
+            E_ALREADY_PURCHASED,
+        );
+
+        let metadata = object::address_to_object<Metadata>(payment_metadata);
+        primary_fungible_store::transfer(
+            buyer,
+            metadata,
+            owner,
+            price,
+        );
+
         record_owner_purchase(buyer_addr, owner, blob_name);
+        record_purchase_index(
+            buyer_addr,
+            owner,
+            blob_name,
+            price,
+            payment_metadata,
+        );
+        record_owner_sale(owner, price);
 
         event::emit(ListingPurchased {
             buyer: buyer_addr,
@@ -596,6 +647,65 @@ module payby_marketplace::payby_marketplace {
         };
 
         *table::borrow(&buyer_purchases.creators, owner)
+    }
+
+    #[view]
+    public fun get_purchase_record_count(user: address): u64 acquires PurchaseIndex {
+        if (!exists<PurchaseIndex>(@payby_marketplace)) {
+            return 0
+        };
+
+        let registry = borrow_global<PurchaseIndex>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, user)) {
+            return 0
+        };
+
+        vector::length(&table::borrow(&registry.buyers, user).records)
+    }
+
+    #[view]
+    public fun get_purchase_record(
+        user: address,
+        index: u64,
+    ): (address, String, u64, address, u64, bool) acquires PurchaseIndex {
+        if (!exists<PurchaseIndex>(@payby_marketplace)) {
+            return (@0x0, std::string::utf8(b""), 0, @0x0, 0, false)
+        };
+
+        let registry = borrow_global<PurchaseIndex>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, user)) {
+            return (@0x0, std::string::utf8(b""), 0, @0x0, 0, false)
+        };
+
+        let buyer_records = table::borrow(&registry.buyers, user);
+        if (index >= vector::length(&buyer_records.records)) {
+            return (@0x0, std::string::utf8(b""), 0, @0x0, 0, false)
+        };
+
+        let record = vector::borrow(&buyer_records.records, index);
+        (
+            record.owner,
+            record.blob_name,
+            record.price,
+            record.payment_metadata,
+            record.purchased_at_secs,
+            true,
+        )
+    }
+
+    #[view]
+    public fun get_sales_summary(owner: address): (u64, u64) acquires SalesRegistry {
+        if (!exists<SalesRegistry>(@payby_marketplace)) {
+            return (0, 0)
+        };
+
+        let registry = borrow_global<SalesRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.owners, owner)) {
+            return (0, 0)
+        };
+
+        let stats = table::borrow(&registry.owners, owner);
+        (stats.sale_count, stats.revenue)
     }
 
     #[view]
@@ -875,6 +985,66 @@ module payby_marketplace::payby_marketplace {
         let purchases = table::borrow_mut(&mut buyer_purchases.creators, owner);
         if (!vector::contains(purchases, &blob_name)) {
             vector::push_back(purchases, blob_name);
+        };
+    }
+
+    fun has_owner_purchase_internal(
+        buyer: address,
+        owner: address,
+        blob_name: &String,
+    ): bool acquires PurchaseRegistry {
+        if (!exists<PurchaseRegistry>(@payby_marketplace)) {
+            return false
+        };
+
+        let registry = borrow_global<PurchaseRegistry>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, buyer)) {
+            return false
+        };
+
+        let buyer_purchases = table::borrow(&registry.buyers, buyer);
+        if (!table::contains(&buyer_purchases.creators, owner)) {
+            return false
+        };
+
+        vector::contains(table::borrow(&buyer_purchases.creators, owner), blob_name)
+    }
+
+    fun record_purchase_index(
+        buyer: address,
+        owner: address,
+        blob_name: String,
+        price: u64,
+        payment_metadata: address,
+    ) acquires PurchaseIndex {
+        let registry = borrow_global_mut<PurchaseIndex>(@payby_marketplace);
+        if (!table::contains(&registry.buyers, buyer)) {
+            table::add(&mut registry.buyers, buyer, BuyerPurchaseRecords {
+                records: vector::empty<BuyerPurchaseRecord>(),
+            });
+        };
+
+        let buyer_records = table::borrow_mut(&mut registry.buyers, buyer);
+        vector::push_back(&mut buyer_records.records, BuyerPurchaseRecord {
+            owner,
+            blob_name,
+            price,
+            payment_metadata,
+            purchased_at_secs: timestamp::now_seconds(),
+        });
+    }
+
+    fun record_owner_sale(owner: address, price: u64) acquires SalesRegistry {
+        let registry = borrow_global_mut<SalesRegistry>(@payby_marketplace);
+        if (table::contains(&registry.owners, owner)) {
+            let stats = table::borrow_mut(&mut registry.owners, owner);
+            stats.sale_count = stats.sale_count + 1;
+            stats.revenue = stats.revenue + price;
+        } else {
+            table::add(&mut registry.owners, owner, OwnerSalesStats {
+                sale_count: 1,
+                revenue: price,
+            });
         };
     }
 }

@@ -4490,6 +4490,33 @@ a {
   flex: 0 0 auto;
 }
 
+.creator-insight-banner {
+  align-items: center;
+  border-color: color-mix(in oklch, var(--warning) 26%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--warning) 7%, transparent), transparent 46%),
+    color-mix(in oklch, var(--surface-strong) 52%, transparent);
+}
+
+.creator-revenue-pill {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-height: 40px;
+  border: 1px solid color-mix(in oklch, var(--warning) 34%, var(--line));
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--warning) 13%, transparent), transparent),
+    color-mix(in oklch, var(--surface) 72%, transparent);
+  color: var(--text);
+  padding: 0 var(--space-md);
+  font-size: 0.86rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--shadow-inset);
+}
+
 .library-source-banner strong {
   color: var(--text);
   font-size: 0.92rem;

@@ -14,7 +14,7 @@ Core workflows:
 - Register creator-owned media listings on-chain.
 - Store metadata commitments for title, category, visibility, policy, and Shelby URI.
 - Support free, paid, private, and allowlist-oriented media policies.
-- Record paid unlock proofs on Aptos.
+- Transfer paid unlock payments to the creator and record buyer purchase proofs on Aptos.
 - Keep vault, activity, and library views scoped to the connected wallet.
 - Operate across Shelbynet and Shelby Testnet routes.
 
@@ -78,6 +78,7 @@ The registry stores:
 - allowlist notes
 - metadata URI and metadata hash commitments
 - buyer purchase records
+- creator sales and revenue summary
 
 Important entry functions:
 
@@ -93,6 +94,9 @@ Important view functions:
 - `get_listing_count_for_owner`
 - `get_listing_key_for_owner`
 - `get_purchases_from_owner`
+- `get_purchase_record_count`
+- `get_purchase_record`
+- `get_sales_summary`
 - `can_access_for_owner`
 
 The frontend keeps fallback reads for older registry records, but new publishes use the owner-scoped registry path.
@@ -234,4 +238,4 @@ Before inviting external users:
 
 ## Current Status
 
-Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
+Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, and creator revenue summary deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.

@@ -87,21 +87,28 @@ async function checkNetwork([key, network]) {
   let ok = true;
   status(true, `${label} marketplace`, `configured at ${network.contract}`);
 
-  for (const functionName of [
-    "get_listing_count",
-    "get_listing_metadata",
-    "get_purchases",
-    "can_access",
-  ]) {
+  const probeOwner =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const checks = [
+    { functionName: "get_listing_count_for_owner", args: [probeOwner] },
+    {
+      functionName: "get_listing_for_owner",
+      args: [probeOwner, "__payby_readiness_probe__"],
+    },
+    {
+      functionName: "get_listing_metadata_for_owner",
+      args: [probeOwner, "__payby_readiness_probe__"],
+    },
+    {
+      functionName: "can_access_for_owner",
+      args: [probeOwner, probeOwner, "__payby_readiness_probe__"],
+    },
+    { functionName: "get_purchase_record_count", args: [probeOwner] },
+    { functionName: "get_sales_summary", args: [probeOwner] },
+  ];
+
+  for (const { functionName, args } of checks) {
     try {
-      const args =
-        functionName === "get_purchases"
-          ? ["0x0"]
-          : functionName === "get_listing_metadata"
-            ? ["__payby_readiness_probe__"]
-          : functionName === "can_access"
-            ? ["0x0", "__payby_readiness_probe__"]
-            : [];
       await callView({
         fullnode: network.fullnode,
         contract: network.contract,
