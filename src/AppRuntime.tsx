@@ -5399,30 +5399,39 @@ function ProfilePanel({
         {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
       </div>
       <aside className="support-panel profile-card-preview">
-        <div className="avatar-preview">
-          {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+        <div className="profile-preview-top">
+          <div className="avatar-preview">
+            {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+          </div>
+          <div className="profile-identity">
+            <strong>{draft.displayName}</strong>
+            <span>@{draft.handle}</span>
+            <p>{draft.bio}</p>
+          </div>
         </div>
-        <strong>{draft.displayName}</strong>
-        <span>@{draft.handle}</span>
-        <p>{draft.bio}</p>
         <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
-          <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
-          <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
+          <div>
+            <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
+            <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
+          </div>
+          <ShieldCheck size={18} />
         </div>
-        <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
-        <DetailItem label="Registered media" value={`${mediaCount}`} />
-        <DetailItem
-          label="On-chain profile"
-          value={chainProfile ? "Published" : "Ready to publish"}
-        />
-        {chainProfile?.updatedAt ? (
+        <div className="profile-stats">
+          <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
+          <DetailItem label="Media" value={`${mediaCount}`} />
           <DetailItem
-            label="Updated"
-            value={new Date(chainProfile.updatedAt).toLocaleDateString()}
+            label="Profile"
+            value={chainProfile ? "Published" : "Ready"}
           />
-        ) : null}
+          {chainProfile?.updatedAt ? (
+            <DetailItem
+              label="Updated"
+              value={new Date(chainProfile.updatedAt).toLocaleDateString()}
+            />
+          ) : null}
+        </div>
         <button
-          className="button button-secondary"
+          className="button button-secondary profile-card-cta"
           type="button"
           disabled={!accountAddress}
           onClick={() => onNavigate({ name: "creator", owner: accountAddress })}
