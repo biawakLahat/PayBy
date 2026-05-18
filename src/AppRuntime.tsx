@@ -5057,6 +5057,60 @@ function MediaPreview({
   );
 }
 
+const AVATAR_SOURCE_LIMIT_BYTES = 6_000_000;
+const AVATAR_DATA_URL_LIMIT_CHARS = 28_000;
+const AVATAR_CANVAS_SIZE = 192;
+
+async function prepareAvatarDataUrl(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Choose an image file for the avatar.");
+  }
+  if (file.size > AVATAR_SOURCE_LIMIT_BYTES) {
+    throw new Error("Choose an image under 6 MB.");
+  }
+
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = document.createElement("img");
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Avatar image could not be read."));
+      element.src = sourceUrl;
+    });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Avatar optimizer is not available.");
+
+    canvas.width = AVATAR_CANVAS_SIZE;
+    canvas.height = AVATAR_CANVAS_SIZE;
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
+    const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      0,
+      0,
+      AVATAR_CANVAS_SIZE,
+      AVATAR_CANVAS_SIZE,
+    );
+
+    for (const quality of [0.82, 0.72, 0.62, 0.52]) {
+      const dataUrl = canvas.toDataURL("image/webp", quality);
+      if (dataUrl.length <= AVATAR_DATA_URL_LIMIT_CHARS) return dataUrl;
+    }
+
+    const jpegUrl = canvas.toDataURL("image/jpeg", 0.7);
+    if (jpegUrl.length <= AVATAR_DATA_URL_LIMIT_CHARS) return jpegUrl;
+    throw new Error("Avatar could not be optimized small enough for on-chain profile.");
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 function ProfilePanel({
   profile,
   saveProfile,
@@ -5143,6 +5197,13 @@ function ProfilePanel({
       marketplaceFunction(selectedNetwork, "upsert_creator_profile");
     if (!functionId) {
       setProfileMessage("Marketplace contract is not configured for profile commits.");
+      return;
+    }
+    if (
+      draft.avatarUrl.trim().startsWith("data:image/") &&
+      draft.avatarUrl.length > AVATAR_DATA_URL_LIMIT_CHARS
+    ) {
+      setProfileMessage("Avatar is too large for the on-chain profile. Choose it again so Payby can optimize it.");
       return;
     }
 
@@ -5251,19 +5312,18 @@ function ProfilePanel({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                if (file.size > 48_000) {
-                  setProfileMessage("Choose an avatar under 48 KB for now.");
-                  event.currentTarget.value = "";
-                  return;
-                }
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const nextUrl = reader.result?.toString() ?? "";
-                  setAvatarPreview(nextUrl);
-                  setAvatarFileName(file.name);
-                  setDraft((current) => ({ ...current, avatarUrl: nextUrl }));
-                };
-                reader.readAsDataURL(file);
+                setProfileMessage("Optimizing avatar for on-chain profile.");
+                void prepareAvatarDataUrl(file)
+                  .then((nextUrl) => {
+                    setAvatarPreview(nextUrl);
+                    setAvatarFileName(file.name);
+                    setDraft((current) => ({ ...current, avatarUrl: nextUrl }));
+                    setProfileMessage("Avatar ready. Save profile to commit it on-chain.");
+                  })
+                  .catch((error) => {
+                    setProfileMessage(userFacingError(error, "Avatar could not be prepared."));
+                    event.currentTarget.value = "";
+                  });
               }}
             />
             <label className="avatar-picker-control" htmlFor={avatarInputId}>
@@ -5272,7 +5332,7 @@ function ProfilePanel({
               </i>
               <div>
                 <strong>{avatarFileName || "Choose avatar"}</strong>
-                <small>PNG, JPG, WebP, or GIF - max 48 KB</small>
+                <small>PNG, JPG, WebP, or GIF - optimized for profile</small>
               </div>
               <em>Browse</em>
             </label>
