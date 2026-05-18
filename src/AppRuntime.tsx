@@ -5082,9 +5082,11 @@ function ProfilePanel({
   } = useWallet();
   const [draft, setDraft] = React.useState(profile);
   const [avatarPreview, setAvatarPreview] = React.useState(profile.avatarUrl);
+  const [avatarFileName, setAvatarFileName] = React.useState("");
   const [profileMessage, setProfileMessage] = React.useState("");
   const [profileSaving, setProfileSaving] = React.useState(false);
   const [chainProfile, setChainProfile] = React.useState<CreatorProfile | null>(null);
+  const avatarInputId = React.useId();
   const walletNetworkAligned = isWalletNetworkAligned(
     walletNetwork,
     selectedNetwork,
@@ -5093,6 +5095,7 @@ function ProfilePanel({
   React.useEffect(() => {
     setDraft(profile);
     setAvatarPreview(profile.avatarUrl);
+    setAvatarFileName("");
   }, [profile]);
 
   React.useEffect(() => {
@@ -5229,33 +5232,51 @@ function ProfilePanel({
             <span>Avatar URL</span>
             <input
               value={draft.avatarUrl}
-              onChange={(event) =>
-                setDraft({ ...draft, avatarUrl: event.target.value })
-              }
+              onChange={(event) => {
+                const nextUrl = event.target.value;
+                setAvatarPreview(nextUrl);
+                setAvatarFileName("");
+                setDraft({ ...draft, avatarUrl: nextUrl });
+              }}
             />
           </label>
-          <label>
-            <span>Avatar picker</span>
+          <div className="avatar-picker-field">
+            <span>Avatar image</span>
             <input
+              id={avatarInputId}
+              className="avatar-file-input"
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
+              aria-label="Choose creator avatar image"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 if (file.size > 48_000) {
                   setProfileMessage("Choose an avatar under 48 KB for now.");
+                  event.currentTarget.value = "";
                   return;
                 }
                 const reader = new FileReader();
                 reader.onload = () => {
                   const nextUrl = reader.result?.toString() ?? "";
                   setAvatarPreview(nextUrl);
-                  setDraft({ ...draft, avatarUrl: nextUrl });
+                  setAvatarFileName(file.name);
+                  setDraft((current) => ({ ...current, avatarUrl: nextUrl }));
                 };
                 reader.readAsDataURL(file);
               }}
             />
-          </label>
+            <label className="avatar-picker-control" htmlFor={avatarInputId}>
+              <i aria-hidden="true">
+                <Image size={18} />
+              </i>
+              <div>
+                <strong>{avatarFileName || "Choose avatar"}</strong>
+                <small>PNG, JPG, WebP, or GIF - max 48 KB</small>
+              </div>
+              <em>Browse</em>
+            </label>
+          </div>
           <label>
             <span>Website</span>
             <input
