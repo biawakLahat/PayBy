@@ -1591,6 +1591,22 @@ a {
     0 18px 38px color-mix(in oklch, var(--brand-gold) 11%, transparent);
 }
 
+.landing-footer-links svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+}
+
+.landing-footer-links a:nth-child(2) svg {
+  width: 20px;
+  height: 20px;
+}
+
+.landing-footer-links a:nth-child(3) svg {
+  width: 21px;
+  height: 21px;
+}
+
 .landing-footer-bottom {
   border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   padding-top: var(--space-xl);

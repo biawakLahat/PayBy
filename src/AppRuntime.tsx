@@ -14,13 +14,11 @@ import {
   Filter,
   FileArchive,
   FileVideo,
-  Github,
   Image,
   KeyRound,
   Link2,
   ListChecks,
   Lock,
-  MessageCircle,
   Moon,
   Pencil,
   PlayCircle,
@@ -2192,13 +2190,13 @@ function LandingPage({
           </div>
           <div className="landing-footer-links" aria-label="Payby links">
             <a href="https://x.com/0xLuxee" target="_blank" rel="noreferrer" aria-label="Payby on X">
-              <X size={18} />
+              <SocialXIcon />
             </a>
             <a href="https://github.com/biawakLahat/PayBy" target="_blank" rel="noreferrer" aria-label="Payby GitHub repository">
-              <Github size={18} />
+              <SocialGitHubIcon />
             </a>
             <a href="https://discord.com" target="_blank" rel="noreferrer" aria-label="Payby community">
-              <MessageCircle size={18} />
+              <SocialDiscordIcon />
             </a>
           </div>
         </div>
@@ -2211,6 +2209,39 @@ function LandingPage({
         </div>
       </footer>
     </main>
+  );
+}
+
+function SocialXIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path
+        fill="currentColor"
+        d="M18.9 2.8h3.3l-7.2 8.2 8.5 11.2h-6.7l-5.2-6.8-6 6.8H2.3l7.7-8.8L1.8 2.8h6.8l4.7 6.2 5.6-6.2Zm-1.2 17.4h1.8L7.6 4.7H5.7l12 15.5Z"
+      />
+    </svg>
+  );
+}
+
+function SocialGitHubIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 .9C5.9.9 1 5.8 1 11.9c0 4.9 3.2 9 7.6 10.5.6.1.8-.2.8-.6v-2.1c-3.1.7-3.8-1.3-3.8-1.3-.5-1.3-1.2-1.7-1.2-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 .1.5 2.1 3.2 1.5.1-.7.4-1.2.7-1.5-2.5-.3-5.1-1.2-5.1-5.5 0-1.2.4-2.2 1.1-3-.1-.3-.5-1.5.1-3 0 0 .9-.3 3 1.1.9-.2 1.8-.4 2.7-.4s1.9.1 2.7.4c2.1-1.4 3-1.1 3-1.1.6 1.5.2 2.7.1 3 .7.8 1.1 1.8 1.1 3 0 4.3-2.6 5.2-5.1 5.5.4.3.8 1 .8 2.1v3.1c0 .4.2.7.8.6 4.4-1.5 7.6-5.6 7.6-10.5C23 5.8 18.1.9 12 .9Z"
+      />
+    </svg>
+  );
+}
+
+function SocialDiscordIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path
+        fill="currentColor"
+        d="M19.5 5.1A17 17 0 0 0 15.3 3l-.5 1.1a15.4 15.4 0 0 0-5.6 0L8.7 3a17 17 0 0 0-4.2 2.1C1.8 9.1 1 13 1.4 16.8A17 17 0 0 0 6.5 19.4l1.1-1.8c-.6-.2-1.1-.5-1.6-.8l.4-.3a12.2 12.2 0 0 0 11.2 0l.4.3c-.5.3-1 .6-1.6.8l1.1 1.8a17 17 0 0 0 5.1-2.6c.5-4.4-.8-8.2-3.1-11.7ZM8.8 14.4c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.4 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"
+      />
+    </svg>
   );
 }
 
