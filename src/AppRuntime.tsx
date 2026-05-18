@@ -14,16 +14,19 @@ import {
   Filter,
   FileArchive,
   FileVideo,
+  Github,
   Image,
   KeyRound,
   Link2,
   ListChecks,
   Lock,
+  MessageCircle,
   Moon,
   Pencil,
   PlayCircle,
   PlugZap,
   Search,
+  Send,
   Share2,
   ShieldCheck,
   Sparkles,
@@ -2174,6 +2177,39 @@ function LandingPage({
           <ArrowRight size={19} />
         </button>
       </section>
+
+      <footer className="landing-footer">
+        <div className="landing-footer-main">
+          <div className="landing-footer-brand">
+            <button className="brand-mark" onClick={onLaunch} type="button" aria-label="Open Payby app">
+              <PaybyLogo />
+            </button>
+            <p>
+              Creator media vault for Shelby storage and Aptos access records.
+              Publish media, prove ownership, and let buyers unlock from their
+              own wallet.
+            </p>
+          </div>
+          <div className="landing-footer-links" aria-label="Payby links">
+            <a href="https://x.com/0xLuxee" target="_blank" rel="noreferrer" aria-label="Payby on X">
+              <X size={18} />
+            </a>
+            <a href="https://github.com/biawakLahat/PayBy" target="_blank" rel="noreferrer" aria-label="Payby GitHub repository">
+              <Github size={18} />
+            </a>
+            <a href="https://discord.com" target="_blank" rel="noreferrer" aria-label="Payby community">
+              <MessageCircle size={18} />
+            </a>
+          </div>
+        </div>
+        <div className="landing-footer-bottom">
+          <span>© 2026 Payby. All rights reserved.</span>
+          <span>
+            Built by <a href="https://x.com/0xLuxee" target="_blank" rel="noreferrer">Luxe</a>
+            <Send size={14} />
+          </span>
+        </div>
+      </footer>
     </main>
   );
 }
