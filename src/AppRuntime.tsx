@@ -4063,7 +4063,7 @@ function VaultList({
           </span>
         </div>
         <div className="vault-header-actions">
-          <button className="button button-primary compact-button" type="button" onClick={() => onNavigate({ name: "publish" })}>
+          <button className="button button-primary compact-button vault-publish-button" type="button" onClick={() => onNavigate({ name: "publish" })}>
             <UploadCloud size={16} />
             Publish media
           </button>
