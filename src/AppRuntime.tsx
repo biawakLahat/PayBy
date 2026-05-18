@@ -4067,7 +4067,6 @@ function VaultList({
             <UploadCloud size={16} />
             Publish media
           </button>
-          <Database size={24} />
         </div>
       </div>
 
