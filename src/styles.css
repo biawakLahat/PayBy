@@ -5324,13 +5324,14 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-lg);
-  border: 1px solid color-mix(in oklch, var(--warning) 38%, var(--line));
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(135deg, color-mix(in oklch, var(--warning) 12%, transparent), transparent 40%),
-    color-mix(in oklch, var(--surface-strong) 68%, transparent);
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 5%, transparent), transparent 40%),
+    color-mix(in oklch, var(--surface-strong) 48%, transparent);
   margin-top: var(--space-md);
   padding: var(--space-lg);
+  box-shadow: var(--shadow-inset);
 }
 
 .funding-helper div {
@@ -5362,20 +5363,20 @@ a {
 
 .integration-proof {
   display: grid;
-  gap: var(--space-lg);
-  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  gap: var(--space-md);
+  border: 1px solid color-mix(in oklch, var(--success) 22%, var(--line));
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(135deg, color-mix(in oklch, var(--accent) 4%, transparent), transparent 40%),
-    color-mix(in oklch, var(--surface-strong) 56%, transparent);
+    linear-gradient(135deg, color-mix(in oklch, var(--success) 5%, transparent), transparent 40%),
+    color-mix(in oklch, var(--surface-strong) 44%, transparent);
   padding: var(--space-lg);
-  margin-top: var(--space-xl);
-  box-shadow: var(--shadow-surface);
+  margin-top: var(--space-md);
+  box-shadow: var(--shadow-inset);
 }
 
 .integration-proof-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-xl);
 }
@@ -5402,7 +5403,7 @@ a {
 }
 
 .integration-proof-head p {
-  max-width: 58ch;
+  max-width: 64ch;
   margin: 0;
   color: var(--muted);
   font-family: var(--font-body);
@@ -5775,6 +5776,137 @@ a {
   scroll-margin-top: var(--space-xl);
 }
 
+.network-route-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-xl);
+  border: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 6%, transparent), transparent 46%),
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 54%, transparent);
+  padding: clamp(18px, 2.4vw, 28px);
+  box-shadow: var(--shadow-inset);
+}
+
+.network-route-card > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.network-route-card span,
+.network-status-bar span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: var(--tracking-label);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.network-route-card strong {
+  color: var(--text);
+  font-size: clamp(1.62rem, 2.2vw, 2.25rem);
+  font-weight: 950;
+  line-height: 0.98;
+}
+
+.network-route-card p {
+  max-width: 58ch;
+  margin: var(--space-xs) 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.network-route-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.network-route-meta span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface) 58%, transparent);
+  color: var(--text);
+  padding: 0 var(--space-md);
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: var(--shadow-inset);
+}
+
+.network-route-meta svg,
+.network-status-bar svg {
+  color: var(--accent);
+}
+
+.network-status-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.network-status-bar div {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 4px var(--space-sm);
+  border: 1px solid color-mix(in oklch, var(--line) 68%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 2.5%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface) 50%, transparent);
+  padding: var(--space-md);
+}
+
+.network-status-bar svg {
+  grid-row: 1 / span 2;
+}
+
+.network-status-bar span,
+.network-status-bar strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-status-bar strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.12;
+}
+
+.network-status-bar .is-ready {
+  border-color: color-mix(in oklch, var(--success) 22%, var(--line));
+}
+
+.network-status-bar .is-ready svg {
+  color: var(--success);
+}
+
+.network-status-bar .is-warning {
+  border-color: color-mix(in oklch, var(--warning) 30%, var(--line));
+}
+
+.network-status-bar .is-warning svg {
+  color: var(--warning);
+}
+
 @keyframes page-in {
   from {
     opacity: 0;
@@ -5790,7 +5922,73 @@ a {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-md);
-  margin-top: var(--space-xl);
+  margin-top: var(--space-md);
+}
+
+.endpoint-drawer {
+  border: 1px solid color-mix(in oklch, var(--line) 68%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 2.4%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 46%, transparent);
+  padding: var(--space-sm);
+  margin-top: var(--space-lg);
+  box-shadow: var(--shadow-inset);
+}
+
+.endpoint-drawer summary {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-md);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0 var(--space-md);
+  cursor: pointer;
+  list-style: none;
+}
+
+.endpoint-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.endpoint-drawer summary > span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.endpoint-drawer summary > span svg,
+.endpoint-drawer summary > svg {
+  color: var(--accent);
+}
+
+.endpoint-drawer summary > strong {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endpoint-drawer summary > svg {
+  transition: transform var(--duration-fast) var(--ease-out-quint);
+}
+
+.endpoint-drawer[open] summary > svg {
+  transform: rotate(180deg);
+}
+
+.endpoint-drawer[open] {
+  padding-bottom: var(--space-md);
 }
 
 .endpoint {
@@ -5801,11 +5999,11 @@ a {
   gap: var(--space-sm);
   border: 1px solid color-mix(in oklch, var(--line) 68%, transparent);
   border-radius: var(--radius-sm);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   background:
-    linear-gradient(145deg, color-mix(in oklch, var(--surface-strong) 62%, transparent), color-mix(in oklch, var(--surface) 74%, transparent)),
-    var(--surface);
-  box-shadow: var(--shadow-surface);
+    linear-gradient(145deg, color-mix(in oklch, var(--surface-strong) 42%, transparent), color-mix(in oklch, var(--surface) 62%, transparent)),
+    color-mix(in oklch, var(--surface) 70%, transparent);
+  box-shadow: var(--shadow-inset);
   transition:
     transform var(--duration-med) var(--ease-out-quint),
     border-color var(--duration-med) var(--ease-out-quint),
@@ -5973,6 +6171,8 @@ a {
 
   .workspace-grid,
   .endpoint-grid,
+  .network-route-card,
+  .network-status-bar,
   .workspace-layout,
   .detail-layout,
   .profile-layout,
@@ -6084,6 +6284,7 @@ a {
 
   .hero-status,
   .status-strip,
+  .network-status-bar,
   .proof-summary,
   .analytics-summary,
   .buyer-library-summary,
@@ -6112,6 +6313,23 @@ a {
   .funding-helper {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .network-route-card {
+    align-items: stretch;
+  }
+
+  .network-route-meta {
+    justify-content: flex-start;
+  }
+
+  .endpoint-drawer summary {
+    grid-template-columns: 1fr auto;
+  }
+
+  .endpoint-drawer summary > strong {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .public-media-shell {

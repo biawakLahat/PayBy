@@ -6265,32 +6265,42 @@ function NetworkPanel({
         </div>
         <KeyRound size={24} />
       </div>
-      <div className="network-overview">
+      <div className="network-route-card">
         <div>
-          <Sparkles size={18} />
-          <span>Storage network</span>
+          <span>Active route</span>
           <strong>{network.label}</strong>
+          <p>{network.permanenceNote}</p>
         </div>
-        <div>
-          <ShieldCheck size={18} />
-          <span>Status note</span>
-          <strong>{network.permanenceNote}</strong>
+        <div className="network-route-meta" aria-label="Active network status">
+          <span>
+            <Sparkles size={15} />
+            Shelby storage
+          </span>
+          <span>
+            <ShieldCheck size={15} />
+            {accountAddress ? "Wallet attached" : "Wallet needed"}
+          </span>
+          <span>
+            <Database size={15} />
+            Direct retrieval
+          </span>
         </div>
-        <div>
-          <Database size={18} />
-          <span>Retrieval mode</span>
-          <strong>Direct Shelby</strong>
-          <p>Direct retrieval keeps the community beta focused on Shelby storage and Move access proofs.</p>
-        </div>
-        <div>
-          {metadataSyncState === "synced" ? (
-            <Database size={18} />
-          ) : metadataSyncState === "syncing" ? (
-            <KeyRound size={18} />
+      </div>
+      <div className="network-status-bar" aria-label="Network readiness status">
+        {proofRows.map((item) => (
+          <div className={item.ok ? "is-ready" : "is-warning"} key={item.label}>
+            {item.ok ? <ShieldCheck size={16} /> : <AlertTriangle size={16} />}
+            <span>{item.label}</span>
+            <strong>{item.state}</strong>
+          </div>
+        ))}
+        <div className={metadataSyncState === "offline" ? "is-warning" : "is-ready"}>
+          {metadataSyncState === "offline" ? (
+            <AlertTriangle size={16} />
           ) : (
-            <AlertTriangle size={18} />
+            <Database size={16} />
           )}
-          <span>Metadata registry</span>
+          <span>Metadata</span>
           <strong>
             {metadataSyncState === "synced"
               ? "Synced"
@@ -6300,33 +6310,18 @@ function NetworkPanel({
                   ? "Local fallback"
                   : "Local mode"}
           </strong>
-          <p>
-            {metadataSyncState === "synced"
-              ? "Vault metadata is synced."
-              : "Payby keeps a browser copy and uses on-chain metadata commitments as the durable source."}
-          </p>
         </div>
       </div>
       <section className="integration-proof" aria-label="Shelby and Aptos integration proof">
         <div className="integration-proof-head">
           <div>
-            <span>Integration proof</span>
-            <strong>Live Shelby + Aptos readiness</strong>
+            <span>Route proof</span>
+            <strong>Ready for publishing</strong>
           </div>
           <p>
-            These checks show whether Payby is ready to publish media, register
-            access policy, and serve controlled retrieval from this browser.
+            Payby is using Shelby for media storage and Aptos for wallet
+            signing, marketplace policy, sales, purchases, and profile state.
           </p>
-        </div>
-        <div className="integration-proof-grid">
-          {proofRows.map((item) => (
-            <div className={item.ok ? "is-ready" : "is-warning"} key={item.label}>
-              {item.ok ? <ShieldCheck size={18} /> : <AlertTriangle size={18} />}
-              <span>{item.label}</span>
-              <strong>{item.state}</strong>
-              <p>{item.detail}</p>
-            </div>
-          ))}
         </div>
       </section>
       <div className="funding-helper">
@@ -6349,32 +6344,42 @@ function NetworkPanel({
           Aptos faucet
         </a>
       </div>
-      <div className="endpoint-grid">
-        {rows.map(({ label, value }) => (
-          <div className="endpoint" key={label}>
-            <span>{label}</span>
-            <code>{value}</code>
-            <button
-              className="icon-button"
-              type="button"
-              aria-label={`Copy ${label}`}
-              title={copiedLabel === label ? "Copied" : `Copy ${label}`}
-              onClick={() => copy(label, value)}
-            >
-              {copiedLabel === label ? <Check size={16} /> : <Copy size={16} />}
-            </button>
-          </div>
-        ))}
-      </div>
-      <a
-        className="network-link"
-        href={`https://explorer.aptoslabs.com/account/${network.contractAddress}?network=${network.explorerNetwork}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        <ExternalLink size={17} />
-        Open contract in Aptos Explorer
-      </a>
+      <details className="endpoint-drawer">
+        <summary>
+          <span>
+            <Database size={17} />
+            Technical endpoints
+          </span>
+          <strong>RPC, indexer, contracts, assets</strong>
+          <ChevronDown size={17} />
+        </summary>
+        <div className="endpoint-grid">
+          {rows.map(({ label, value }) => (
+            <div className="endpoint" key={label}>
+              <span>{label}</span>
+              <code>{value}</code>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label={`Copy ${label}`}
+                title={copiedLabel === label ? "Copied" : `Copy ${label}`}
+                onClick={() => copy(label, value)}
+              >
+                {copiedLabel === label ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+          ))}
+        </div>
+        <a
+          className="network-link"
+          href={`https://explorer.aptoslabs.com/account/${network.contractAddress}?network=${network.explorerNetwork}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ExternalLink size={17} />
+          Open contract in Aptos Explorer
+        </a>
+      </details>
     </section>
   );
 }
