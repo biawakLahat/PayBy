@@ -1,34 +1,84 @@
 # Payby
 
-Payby is a Web3-native creator media vault built for Shelby storage and Aptos wallets.
+<p align="center">
+  <img src="public/payby-icon.svg" width="72" alt="Payby logo" />
+</p>
 
-It lets creators publish media to Shelby, register access policy and metadata commitments on Aptos, and share media pages that can be verified through wallet ownership, paid unlock state, and on-chain listing records.
+<h3 align="center">Creator media vault for Shelby storage and Aptos access records.</h3>
 
-## Product Scope
+<p align="center">
+  Payby lets creators publish media to Shelby, register listing and access policy on Aptos,
+  and share wallet-aware media pages buyers can unlock from their own account.
+</p>
 
-Payby is designed for creators who need a wallet-native way to publish and manage premium media without relying on a centralized account system.
+<p align="center">
+  <a href="https://payby-pi.vercel.app"><strong>Live app</strong></a>
+  |
+  <a href="contracts/payby_marketplace">Move registry</a>
+  |
+  <a href="scripts/readiness-check.mjs">Community readiness check</a>
+</p>
 
-Core workflows:
+<p align="center">
+  <img src="assets/readme/shelby.svg" width="32" alt="Shelby" />
+  &nbsp;
+  <strong>Shelby media storage</strong>
+  &nbsp;&nbsp;&nbsp;
+  <img src="assets/readme/aptos.svg" width="32" alt="Aptos" />
+  &nbsp;
+  <strong>Aptos wallet registry</strong>
+</p>
 
-- Publish media blobs to Shelby from a connected Aptos wallet.
-- Register creator-owned media listings on-chain.
-- Store metadata commitments for title, category, visibility, policy, and Shelby URI.
-- Support free, paid, private, and allowlist-oriented media policies.
-- Transfer paid unlock payments to the creator and record buyer purchase proofs on Aptos.
-- Keep vault, activity, and library views scoped to the connected wallet.
-- Publish an on-chain creator profile for public creator pages, avatar identity, and X handle status.
-- Discover external creator vaults by wallet address without mixing them into the connected wallet vault.
-- Surface creator sales, listing-level sales, and buyer purchase history from the Move registry.
-- Operate across Shelbynet and Shelby Testnet routes.
+![Payby landing page](assets/readme/payby-landing-page.png)
 
-Current retrieval mode is direct Shelby retrieval while Shelby Early Access is pending. The Move registry is the durable source for listing ownership, access policy, metadata commitments, and purchase proofs.
+## What Payby Does
+
+Payby is a Web3-native creator media vault for premium media, creator archives, gated drops, and wallet-scoped buyer access.
+
+Creators can:
+
+- Publish media blobs to Shelby from an Aptos wallet.
+- Register owner-scoped media listings on-chain.
+- Commit metadata, access policy, visibility, price, and Shelby URI.
+- Share public media pages and public creator pages.
+- Track creator sales, listing sales, revenue, and activity.
+- Manage free, paid, private, and allowlist-oriented media policies.
+
+Buyers can:
+
+- Open media pages from their own wallet.
+- Purchase paid media and record purchase proof on Aptos.
+- Reopen unlocked media from a wallet-scoped buyer library.
+- Verify access without inheriting another wallet's activity.
+
+## Integration Focus
+
+| Layer | Role |
+| --- | --- |
+| Shelby | Media blob publishing, storage route, retrieval route, metadata blob storage |
+| Aptos / Shelbynet | Wallet signing, owner-scoped registry, access policy, purchase receipts, creator profile records |
+| Payby frontend | Creator workspace, buyer library, public media pages, discovery, analytics, route inspection |
+| Local cache | UI recovery cache only; canonical listing and access state is intended to live on-chain |
+
+Payby currently uses direct Shelby retrieval while Early Access validation is pending. The Move registry remains the durable source for listing ownership, metadata commitments, policy, purchases, and creator profile state.
+
+## Core Features
+
+- **Creator Vault**: wallet-scoped Shelby media library with search, registry recovery, route proof, share links, expiry status, and download actions.
+- **Publish Flow**: media upload, metadata entry, retention selection, visibility, access policy, pricing, and wallet-signed registry writes.
+- **On-Chain Registry**: owner-scoped listings, creator profiles, paid unlock receipts, revenue summaries, and access checks.
+- **Public Media Pages**: shareable pages that read listing state and verify buyer access before unlock.
+- **Creator Pages**: `/creator/<wallet-address>` pages for public creator identity and listed media.
+- **Buyer Library**: wallet-scoped purchase receipts and unlocked media.
+- **Analytics**: creator revenue, listing sales, buyer receipts, and activity surfaces.
+- **Network Routes**: Shelbynet and Shelby Testnet configuration with Shelby RPC, Aptos fullnode, indexer, contract, and payment asset visibility.
 
 ## Architecture
 
 ```text
 Creator wallet
   |
-  | signs upload / registry transactions
+  | signs upload and registry transactions
   v
 Payby frontend
   |
@@ -40,31 +90,29 @@ Shelby storage
   v
 Aptos Move registry
   |
-  | owner-scoped listings, policy, metadata hash, purchases
+  | listings, policies, profiles, purchases, revenue
   v
-Vault / Library / Public media pages
+Vault / Buyer Library / Creator Pages / Public Media Pages
 ```
 
 Main integration points:
 
-- `@shelby-protocol/react` for the upload flow.
+- `@shelby-protocol/react` for upload mutations.
 - `@shelby-protocol/sdk` for browser-side Shelby client operations.
 - `@aptos-labs/wallet-adapter-react` for wallet connection and signing.
-- `@aptos-labs/ts-sdk` for Aptos fullnode reads and transaction finality.
-- `contracts/payby_marketplace` for on-chain creator listing and access state.
+- `@aptos-labs/ts-sdk` for fullnode reads, view calls, and transaction finality.
+- `contracts/payby_marketplace` for Move-based media listing and access state.
 
 ## Networks
 
-Payby supports two Shelby routes:
-
 | Payby route | Wallet network | Shelby RPC | Purpose |
 | --- | --- | --- | --- |
-| Shelbynet | `Network.SHELBYNET` | `https://api.shelbynet.shelby.xyz/shelby` | Current primary route for live prototype testing |
-| Shelby Testnet | `Network.TESTNET` | `https://api.testnet.shelby.xyz/shelby` | Early Access test route |
+| Shelbynet | `Network.SHELBYNET` | `https://api.shelbynet.shelby.xyz/shelby` | Primary community testing route |
+| Shelby Testnet | `Network.TESTNET` | `https://api.testnet.shelby.xyz/shelby` | Early Access validation route |
 
-Shelbynet data may be wiped by the network. Do not treat prototype network storage as permanent archival storage.
+Shelbynet is a prototype network. Treat it as a live integration route, not permanent archival storage.
 
-## On-Chain Registry
+## Move Registry
 
 The Move package lives in:
 
@@ -109,8 +157,6 @@ Important view functions:
 - `get_creator_profile_v2`
 - `can_access_for_owner`
 
-The frontend keeps fallback reads for older registry records, but new publishes use the owner-scoped registry path.
-
 ## Environment
 
 Create a local `.env` from `.env.example`.
@@ -134,7 +180,7 @@ VITE_PAYBY_APT_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA=
 ```
 
-Use network-specific payment assets when needed:
+Optional network-specific payment assets:
 
 ```env
 VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA=
@@ -155,13 +201,11 @@ Install dependencies:
 npm install
 ```
 
-Run the app:
+Run locally:
 
 ```bash
 npm run dev
 ```
-
-Vite serves the app at `http://127.0.0.1:5173` or the next available port.
 
 Build and type-check:
 
@@ -169,7 +213,7 @@ Build and type-check:
 npm run build
 ```
 
-Community readiness check:
+Run the community readiness check:
 
 ```bash
 npm run verify:community
@@ -221,11 +265,16 @@ scripts/
   deploy-payby-marketplace.ps1
   readiness-check.mjs
 
+assets/readme/
+  payby-landing-page.png  README landing page screenshot
+  aptos.svg               Aptos README icon
+  shelby.svg              Shelby README icon
+
 public/
   payby-icon.svg          browser and app icon
 ```
 
-## Shelby Implementation Notes
+## Shelby Notes
 
 Shelby upload encoding depends on Clay WASM. The Vite config serves:
 
@@ -235,27 +284,27 @@ Shelby upload encoding depends on Clay WASM. The Vite config serves:
 
 with `application/wasm` during development. Keep this behavior intact when changing Vite configuration.
 
-Payby currently writes Payby metadata as a Shelby blob and commits its URI/hash on-chain. This keeps user-facing metadata recoverable from Shelby while keeping the ownership and access proof on Aptos.
+Payby writes Payby metadata as a Shelby blob and commits its URI/hash on-chain. This keeps user-facing metadata recoverable from Shelby while keeping ownership and access proof on Aptos.
 
 ## Community Beta Checklist
 
 Before inviting external users:
 
-- Verify the production frontend has all required Vercel environment variables.
+- Verify production Vercel environment variables.
 - Publish one small free media item on Shelbynet from wallet A.
-- Confirm wallet A sees only wallet A vault and activity entries.
+- Confirm wallet A sees only wallet A vault and activity.
 - Open the public media page and verify the Shelby blob can be previewed or downloaded.
 - Publish one paid media item with a non-zero price.
-- Connect wallet B and confirm the paid page requests purchase before access.
-- Complete purchase from wallet B and verify `purchase_from` records the unlock on-chain.
+- Connect wallet B and complete a paid unlock.
+- Verify `purchase_from` records buyer access on-chain.
 - Confirm wallet A sees updated creator revenue and listing-level sales.
 - Commit the creator profile on-chain and open `/creator/<wallet-address>`.
-- Open `/app/discover`, browse an external creator wallet, and verify the connected wallet does not change the creator vault scope.
-- Open `/app/analytics` from the creator wallet and verify creator revenue and listing-level sales are read on-chain.
+- Open `/app/discover`, browse an external creator wallet, and verify wallet scope stays isolated.
 - Connect wallet C and confirm wallet C does not inherit wallet B activity or purchase state.
-- Delete a listing from wallet A and confirm the public page no longer treats it as active.
 - Repeat the same path on Shelby Testnet after Early Access is granted.
 
 ## Current Status
 
-Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, creator revenue summary, listing-level sales, and on-chain creator profile registry deployed and integrated. The remaining production-hardening work is focused on real multi-wallet E2E testing, Early Access validation on Shelby Testnet, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
+Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, creator revenue summary, listing-level sales, and on-chain creator profile registry deployed and integrated.
+
+Remaining production-hardening work is focused on multi-wallet E2E testing, Shelby Testnet validation through Early Access, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.

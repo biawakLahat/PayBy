@@ -1,0 +1,10 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aptos">
+  <rect width="120" height="120" rx="28" fill="#111111"/>
+  <path d="M26 43.5H94" stroke="#F7F4EA" stroke-width="7" stroke-linecap="round"/>
+  <path d="M37 58.5H83" stroke="#F7F4EA" stroke-width="7" stroke-linecap="round"/>
+  <path d="M26 73.5H94" stroke="#F7F4EA" stroke-width="7" stroke-linecap="round"/>
+  <path d="M43 88.5H77" stroke="#F7F4EA" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="46" cy="43.5" r="5.5" fill="#111111"/>
+  <circle cx="74" cy="58.5" r="5.5" fill="#111111"/>
+  <circle cx="46" cy="73.5" r="5.5" fill="#111111"/>
+</svg>
