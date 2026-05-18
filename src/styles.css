@@ -3671,8 +3671,23 @@ a {
 }
 
 .inline-status {
-  min-height: 24px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3.5%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 50%, transparent);
+  color: var(--muted);
+  padding: 0 var(--space-md);
   margin: var(--space-md) 0 0;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  box-shadow: var(--shadow-inset);
 }
 
 .search-box {

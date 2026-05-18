@@ -56,7 +56,7 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
         "",
     },
     explorerNetwork: "shelbynet",
-    permanenceNote: "Prototype network. Data may be wiped roughly weekly.",
+    permanenceNote: "Primary Shelby route for community publishing and media operations.",
   },
   "shelby-testnet": {
     label: "Shelby Testnet",
@@ -92,7 +92,7 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
         "",
     },
     explorerNetwork: "testnet",
-    permanenceNote: "Shelby public testnet integration.",
+    permanenceNote: "Shelby Testnet route for Early Access validation and release checks.",
   },
 };
 

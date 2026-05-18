@@ -737,7 +737,7 @@ async function readChainListing(
 
   let data: unknown[];
   try {
-    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped listing unavailable.");
+    if (!ownerFunctionId || !owner) throw new Error("Marketplace listing view is not available on this route.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
     const ownerListing = parseChainListing(data);
     if (ownerListing.found || !legacyFunctionId) {
@@ -836,7 +836,7 @@ async function readChainListingMetadata(
 
   let data: unknown[];
   try {
-    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped metadata unavailable.");
+    if (!ownerFunctionId || !owner) throw new Error("Marketplace metadata view is not available on this route.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [owner, blobName]);
     const [ownerMetadataUri, ownerMetadataHash, ownerFound] = data;
     if (ownerFound || !legacyFunctionId) {
@@ -871,7 +871,7 @@ async function readChainAccess(
 
   let data: unknown[];
   try {
-    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped access unavailable.");
+    if (!ownerFunctionId || !owner) throw new Error("Marketplace access view is not available on this route.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [
       owner,
       user,
@@ -904,7 +904,7 @@ async function readChainPurchases(
 
   let data: unknown[];
   try {
-    if (!ownerFunctionId || !owner) throw new Error("Owner-scoped purchase list unavailable.");
+    if (!ownerFunctionId || !owner) throw new Error("Marketplace purchase index is not available on this route.");
     data = await callMarketplaceView(selectedNetwork, ownerFunctionId, [buyer, owner]);
     const ownerPurchases = Array.isArray(data[0]) ? data[0] : data;
     if (ownerPurchases.length > 0 || !legacyFunctionId) {
@@ -1691,7 +1691,7 @@ function getShareUrl(owner: string, blobName: string) {
 }
 
 function shortenAddress(address: string) {
-  if (!address) return "No wallet";
+  if (!address) return "Connect wallet";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
@@ -1793,8 +1793,8 @@ function getExpiryState(micros?: number) {
 function metadataRegistryLabel(syncState: ReturnType<typeof useStoredMetadata>["syncState"]) {
   if (syncState === "synced") return "Synced";
   if (syncState === "syncing") return "Checking";
-  if (syncState === "offline") return "Browser cache";
-  return "Browser cache";
+  if (syncState === "offline") return "Offline cache";
+  return "Ready";
 }
 
 function pendingStatusLabel(status: PendingPublishStatus) {
@@ -1806,7 +1806,7 @@ function pendingStatusLabel(status: PendingPublishStatus) {
     registry: "Registry",
     indexing: "Indexing",
     ready: "Ready",
-    failed: "Failed",
+      failed: "Needs attention",
   };
 
   return labels[status];
@@ -1821,7 +1821,7 @@ function pendingStatusDetail(status: PendingPublishStatus) {
     registry: "Writing Payby access policy on-chain.",
     indexing: "Stored on Shelby. Waiting for vault indexer.",
     ready: "Indexed and available in the vault.",
-    failed: "Publish did not complete. Reopen publish and try again.",
+    failed: "Publish needs review. Reopen the flow and continue from the last completed step.",
   };
 
   return details[status];
@@ -2117,7 +2117,7 @@ function LandingPage({
           <article className="reveal-on-scroll">
             <span>03</span>
             <h3>Publish to Shelby</h3>
-            <p>Upload encoded blobs to Shelby RPC on shelbynet or testnet.</p>
+            <p>Store media on the selected Shelby route with wallet-backed provenance.</p>
           </article>
         </div>
       </section>
@@ -2151,7 +2151,7 @@ function LandingPage({
             <Database size={24} />
             <h3>Inspectable networks</h3>
             <p>
-              Switch between shelbynet and Shelby testnet while keeping RPC,
+              Switch between Shelbynet and Shelby Testnet while keeping RPC,
               fullnode, indexer, and contract details visible.
             </p>
           </article>
@@ -2161,7 +2161,7 @@ function LandingPage({
       <section className="network-showcase reveal-on-scroll" id="networks">
         <div>
           <span className="eyebrow">Network aware</span>
-          <h2>Shelbynet and Shelby testnet are first-class routes.</h2>
+          <h2>Shelbynet and Shelby Testnet are first-class routes.</h2>
           <p>
             Payby surfaces the RPC, fullnode, indexer, and contract details so
             creators can see where media is being registered and stored.
@@ -2335,8 +2335,8 @@ function VaultApp({
           <StatusTile label="Wallet" value={shortenAddress(accountAddress)} />
           <StatusTile label="Network" value={network.label} />
           <StatusTile
-            label="API key"
-            value={network.apiKey ? "Client key loaded" : "Anonymous mode"}
+            label="Client access"
+            value={network.apiKey ? "Authenticated" : "Public route"}
           />
           <StatusTile
             label="Metadata"
@@ -2346,8 +2346,8 @@ function VaultApp({
                 : metadataStore.syncState === "syncing"
                   ? "Syncing"
                 : metadataStore.syncState === "offline"
-                    ? "Browser cache"
-                    : "Browser cache"
+                    ? "Offline cache"
+                    : "Ready"
             }
           />
         </section>
@@ -2359,11 +2359,11 @@ function VaultApp({
           </div>
           <div>
             <span>Signer state</span>
-            <strong>{accountAddress ? "Wallet attached" : "Awaiting wallet"}</strong>
+            <strong>{accountAddress ? "Wallet attached" : "Connect wallet"}</strong>
           </div>
           <div>
             <span>Publishing mode</span>
-            <strong>{network.apiKey ? "Authenticated client" : "Public client"}</strong>
+            <strong>{network.apiKey ? "Authenticated route" : "Public route"}</strong>
           </div>
           <div>
             <span>Metadata registry</span>
@@ -2371,8 +2371,8 @@ function VaultApp({
               {metadataStore.syncState === "synced"
                 ? "Synced"
                 : metadataStore.syncState === "offline"
-                  ? "Browser cache"
-                  : "Local cache"}
+                  ? "Offline cache"
+                  : "Ready"}
             </strong>
           </div>
         </section>
@@ -2500,8 +2500,8 @@ function NetworkSwitch({
   const menuRef = React.useRef<HTMLDivElement | null>(null);
   const network = PAYBY_NETWORKS[selectedNetwork];
   const options: { value: PaybyNetwork; detail: string }[] = [
-    { value: "shelbynet", detail: "Early access storage route" },
-    { value: "shelby-testnet", detail: "Public test environment" },
+    { value: "shelbynet", detail: "Primary Shelby route" },
+    { value: "shelby-testnet", detail: "Early Access validation route" },
   ];
 
   React.useEffect(() => {
@@ -2681,7 +2681,7 @@ function WalletControl() {
                       const message =
                         error instanceof Error
                           ? error.message
-                          : "Wallet connection failed.";
+                          : "Wallet connection needs attention.";
                       setWalletMessage(message);
                     }
                   }}
@@ -2835,7 +2835,7 @@ function CreatorAnalyticsPanel({
       ) : state === "loading" ? (
         <EmptyState title="Loading analytics" body="Reading listing sales and revenue from Aptos." />
       ) : state === "error" ? (
-        <EmptyState title="Analytics unavailable" body="The active fullnode did not return creator sales data." />
+        <EmptyState title="Analytics needs refresh" body="The active fullnode did not return creator sales data. Try again after finality." />
       ) : rows.length === 0 ? (
         <EmptyState title="No creator listings yet" body="Publish media to start building analytics." actionLabel="Publish media" onAction={() => onNavigate({ name: "publish" })} />
       ) : (
@@ -2939,7 +2939,7 @@ function UploadPanel({
     setAllowlist(draft.metadata.allowlist);
     setRetentionDays(30);
     setStatusMessage(
-      "Renewal draft loaded. Select the media file again to publish a fresh Shelby blob.",
+      "Renewal policy loaded. Select the media file again to renew Shelby storage.",
     );
   }, [selectedNetwork]);
 
@@ -2976,7 +2976,7 @@ function UploadPanel({
       );
     },
     onError: (error) => {
-      const message = userFacingError(error, "Upload failed.");
+      const message = userFacingError(error, "Upload needs attention.");
       pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
         status: "failed",
         error: message,
@@ -3051,7 +3051,7 @@ function UploadPanel({
     publishNoticeTone === "success"
       ? "Publish complete"
       : publishNoticeTone === "danger"
-        ? "Publish failed"
+        ? "Publish needs attention"
         : publishNoticeTone === "warning"
           ? "Action needed"
           : publishPhase === "idle"
@@ -3118,7 +3118,7 @@ function UploadPanel({
       } catch (error) {
         const message = userFacingError(
           error,
-          "Access registry transaction failed.",
+          "Access registry transaction needs attention.",
         );
         setPublishPhase("error");
         setRegistryRetryItems(registryItems);
@@ -3129,7 +3129,7 @@ function UploadPanel({
         setStatusMessage(message);
         addActivity({
           type: "metadata",
-          label: "Access registry failed",
+          label: "Access registry needs attention",
           detail: item.blobName,
           blobNames: [item.blobName],
         });
@@ -3327,7 +3327,7 @@ function UploadPanel({
       } catch (error) {
         const message = userFacingError(
           error,
-          "Wallet rejected or failed to submit the transaction.",
+          "Wallet rejected the request or did not submit the transaction.",
         );
         pendingPublishStore.updatePublishes(activePublishRef.current.pendingIds, {
           status: "failed",
@@ -3361,10 +3361,10 @@ function UploadPanel({
         <div className="panel-header hero-panel-header">
           <div>
             <p className="muted">Publish to {PAYBY_NETWORKS[selectedNetwork].label}</p>
-            <h2>Upload media blobs</h2>
+            <h2>Publish media</h2>
             <span>
-              Stage files, set retention, then approve the Shelby registration
-              from your Aptos wallet.
+              Prepare media, define access, then approve the Shelby and Aptos
+              registration from your wallet.
             </span>
           </div>
           <UploadCloud size={24} />
@@ -3374,11 +3374,11 @@ function UploadPanel({
           <div className="library-source-banner renewal-draft-banner">
             <Clock size={18} />
             <div>
-              <strong>Retention renewal draft</strong>
+              <strong>Renew media retention</strong>
               <p>
-                Payby prefilled the policy from {republishDraft.sourceBlobName}.
-                Select the replacement file to publish a fresh Shelby blob and
-                write a new on-chain listing.
+                Payby carried over the access policy from {republishDraft.sourceBlobName}.
+                Select the replacement file to renew storage and register the
+                updated listing on-chain.
               </p>
             </div>
             <button
@@ -3390,7 +3390,7 @@ function UploadPanel({
                 setStatusMessage("");
               }}
             >
-              Clear draft
+              Clear renewal
               <X size={15} />
             </button>
           </div>
@@ -3421,7 +3421,7 @@ function UploadPanel({
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Fallbacks to file name"
+              placeholder="Untitled media uses the file name"
             />
           </label>
           <label>
@@ -3510,7 +3510,7 @@ function UploadPanel({
               <CreditCard size={18} />
               <div>
                 <span>{currency} payment asset</span>
-                <code>{selectedPaymentAsset || "Not configured"}</code>
+                <code>{selectedPaymentAsset || "Setup needed"}</code>
               </div>
               <strong>
                 {price ? formatAssetUnits(parseAssetUnits(price), currency) : `0 ${currency}`}
@@ -3522,7 +3522,7 @@ function UploadPanel({
             <textarea
               value={allowlist}
               onChange={(event) => setAllowlist(event.target.value)}
-              placeholder="Wallet addresses, collection id, or pass notes. Enforcement uses the Payby Move contract."
+              placeholder="Wallet addresses, collection id, or access notes. Payby records wallet allowlists on-chain."
             />
           </label>
         </div>
@@ -3726,7 +3726,7 @@ function publishPhaseSummary(
       label: "Waiting for Aptos finality",
       detail:
         elapsedSeconds > 25
-          ? "Still waiting on the network. This can happen on prototype routes; the transaction link stays available once a hash is returned."
+          ? "Still waiting on network finality. The transaction link remains available once a hash is returned."
           : transactionHash
             ? "Transaction submitted. Payby is waiting for finality before sending blob data to Shelby."
             : "Wallet submitted the transaction. Payby is waiting for the network response.",
@@ -3807,7 +3807,7 @@ function PublishProgress({
               ? "Complete"
               : phase === "error"
                 ? "Action needed"
-                : "Idle"}
+                : "Ready"}
         </strong>
       </div>
       <div className="publish-progress-track" aria-label="Publish progress">
@@ -3904,7 +3904,7 @@ function VaultList({
       void blobsQuery.refetch();
     },
     onError: (error) => {
-      setActionMessage(userFacingError(error, "Delete failed."));
+      setActionMessage(userFacingError(error, "Delete needs attention."));
     },
   });
 
@@ -4088,9 +4088,9 @@ function VaultList({
               : chainIndexState === "synced"
                 ? `${chainListingCount}`
                 : chainIndexState === "unavailable"
-                  ? "No contract"
+                  ? "Setup needed"
                   : chainIndexState === "error"
-                    ? "Failed"
+                    ? "Retry"
                     : "Ready"}
           </strong>
         </div>
@@ -4126,9 +4126,9 @@ function VaultList({
               : chainIndexState === "synced"
                 ? "Creator registry synced"
                 : chainIndexState === "unavailable"
-                  ? "Marketplace contract not configured"
+                  ? "Marketplace registry needs setup"
                   : chainIndexState === "error"
-                    ? "Creator registry sync failed"
+                    ? "Creator registry needs refresh"
                     : "Creator registry ready"}
           </strong>
           <p>
@@ -4189,16 +4189,16 @@ function VaultList({
           body="Connect an Aptos wallet to load the Shelby blobs registered to your account."
         />
       ) : blobsQuery.isLoading ? (
-        <EmptyState title="Loading vault" body="Reading account blob metadata." />
+        <EmptyState title="Loading vault" body="Reading your Shelby media and on-chain registry records." />
       ) : blobsQuery.isError ? (
         <EmptyState
-          title="Could not load blobs"
-          body={(blobsQuery.error as Error)?.message ?? "Query failed."}
+          title="Vault could not be loaded"
+          body={(blobsQuery.error as Error)?.message ?? "The active Shelby route did not return media records."}
         />
       ) : blobs.length === 0 ? (
         <EmptyState
-          title="No blobs yet"
-          body="Publish creator media and it will appear here with download links."
+          title="Your vault is empty"
+          body="Publish creator media to create the first Shelby record for this wallet."
           actionLabel="Publish media"
           onAction={() => onNavigate({ name: "publish" })}
         />
@@ -4359,8 +4359,8 @@ function PendingPublishQueue({
               <button
                 className="icon-button"
                 type="button"
-                aria-label={`Dismiss failed publish ${item.title}`}
-                title="Dismiss failed publish"
+                aria-label={`Dismiss publish item ${item.title}`}
+                title="Dismiss publish item"
                 onClick={() => onDismiss(item.id)}
               >
                 <X size={15} />
@@ -4511,7 +4511,7 @@ function MediaDetailPage({
       onNavigate({ name: "vault" });
     },
     onError: (error) => {
-      setActionMessage(userFacingError(error, "Delete failed."));
+      setActionMessage(userFacingError(error, "Delete needs attention."));
     },
   });
   const shelbyBlobUrl = getDownloadUrl(selectedNetwork, owner, blobName);
@@ -4530,10 +4530,10 @@ function MediaDetailPage({
         : "On-chain policy inactive"
       : chainListingState === "missing"
         ? "On-chain policy missing"
-        : chainListingState === "unconfigured"
-          ? "Marketplace not configured"
+      : chainListingState === "unconfigured"
+          ? "Registry setup needed"
           : chainListingState === "error"
-            ? "Chain read failed"
+            ? "Refresh needed"
             : "Checking chain";
   const needsRegistryRepair =
     Boolean(metadata) &&
@@ -4652,7 +4652,7 @@ function MediaDetailPage({
       });
     } catch (error) {
       setChainListingState("error");
-      setActionMessage(userFacingError(error, "Registry repair failed."));
+      setActionMessage(userFacingError(error, "Registry repair needs attention."));
     } finally {
       setRegistryRepairing(false);
     }
@@ -4727,7 +4727,7 @@ function MediaDetailPage({
         detail: blobName,
       });
     } catch (error) {
-      setActionMessage(userFacingError(error, "Allowlist update failed."));
+      setActionMessage(userFacingError(error, "Allowlist update needs attention."));
     } finally {
       setAllowlistSaving(false);
     }
@@ -4740,7 +4740,7 @@ function MediaDetailPage({
           <div>
             <p className="muted">{metadata?.category || "Media detail"}</p>
             <h2>{metadata?.title || blobName}</h2>
-            <span>{metadata?.description || "Shelby blob registered to this wallet."}</span>
+          <span>{metadata?.description || "Media stored on Shelby and managed by this wallet."}</span>
           </div>
           <FileVideo size={24} />
         </div>
@@ -4772,7 +4772,7 @@ function MediaDetailPage({
               onNavigate({ name: "publish" });
             }}
           >
-            Re-publish flow
+            Renew storage
             <ArrowRight size={15} />
           </button>
         </section>
@@ -4790,7 +4790,7 @@ function MediaDetailPage({
           <DetailItem label="Sales" value={`${listingSales.saleCount}`} />
           <DetailItem label="Revenue" value={formatAssetUnits(listingSales.revenue, metadata?.currency ?? "APT")} />
           <DetailItem label="Shelby route" value={PAYBY_NETWORKS[selectedNetwork].label} />
-          <DetailItem label="Registry cache" value={registryState} />
+          <DetailItem label="Registry state" value={registryState} />
           <DetailItem label="Chain policy" value={chainRegistryLabel} />
         </div>
 
@@ -4798,7 +4798,7 @@ function MediaDetailPage({
           <div className="media-proof-head">
             <div>
               <span>Shelby media proof</span>
-              <strong>Routes and access evidence for this blob</strong>
+              <strong>Storage route and on-chain access evidence</strong>
             </div>
             <ShieldCheck size={20} />
           </div>
@@ -4808,7 +4808,7 @@ function MediaDetailPage({
               <code>{PAYBY_NETWORKS[selectedNetwork].shelbyRpcUrl}</code>
             </div>
             <div>
-              <span>Blob route</span>
+              <span>Media route</span>
               <code>{shelbyBlobUrl}</code>
             </div>
             <div>
@@ -4823,7 +4823,7 @@ function MediaDetailPage({
               <span>Marketplace contract</span>
               <code>
                 {PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress ||
-                  "Not configured"}
+                  "Setup needed"}
               </code>
             </div>
             <div>
@@ -4845,12 +4845,12 @@ function MediaDetailPage({
               <code>
                 {chainListing?.paymentMetadata ||
                   PAYBY_NETWORKS[selectedNetwork].paymentAssetMetadataAddress ||
-                  "Not configured"}
+                  "Setup needed"}
               </code>
             </div>
             <div>
-              <span>Retrieval mode</span>
-              <strong>Direct Shelby</strong>
+              <span>Retrieval</span>
+              <strong>Shelby route</strong>
             </div>
             <div>
               <span>On-chain registry</span>
@@ -4960,11 +4960,11 @@ function MediaDetailPage({
             {chainListingState === "found"
               ? "Payby found this blob policy in the marketplace contract."
               : chainListingState === "missing"
-                ? "This Shelby blob exists locally, but no marketplace policy was found for the blob name."
+                ? "This Shelby media exists, but Payby did not find its marketplace policy yet."
                 : chainListingState === "unconfigured"
-                  ? "Set the marketplace contract address to verify policy state."
+                  ? "Add the marketplace contract address to verify policy state."
                   : chainListingState === "error"
-                    ? "Payby could not read the listing view from the active fullnode."
+                    ? "Payby could not read the listing view from the active fullnode. Refresh after a moment."
                     : "Reading marketplace view from Aptos."}
           </p>
         </div>
@@ -5004,11 +5004,10 @@ function MediaDetailPage({
         ) : null}
         <div className="network-mini-card">
           <span>Lifecycle</span>
-          <strong>{expiryState.label}</strong>
-          <p>
-            {expiryState.detail} Shelby React currently exposes delete and
-            upload hooks here; extension needs a supported renewal method or a
-            re-publish flow.
+              <strong>{expiryState.label}</strong>
+              <p>
+            {expiryState.detail} Use renewal when a media record needs a fresh
+            Shelby storage window.
           </p>
         </div>
       </aside>
@@ -5077,7 +5076,7 @@ function MediaPreview({
       {!isImage && !isVideo && !isAudio && !isPdf ? (
         <div>
           <PlayCircle size={42} />
-          <strong>Preview unavailable</strong>
+          <strong>Preview not available</strong>
           <span>Download the blob or open it in a new tab.</span>
         </div>
       ) : null}
@@ -5208,7 +5207,7 @@ function ProfilePanel({
   async function saveProfileOnChain() {
     saveProfile({ ...draft, updatedAt: Date.now() });
     if (!account) {
-      setProfileMessage("Local profile saved. Connect wallet to commit it on-chain.");
+      setProfileMessage("Profile saved in this browser. Connect your wallet to publish it on-chain.");
       return;
     }
     if (!walletNetworkAligned) {
@@ -5224,7 +5223,7 @@ function ProfilePanel({
       marketplaceFunction(selectedNetwork, "upsert_creator_profile_v2") ||
       marketplaceFunction(selectedNetwork, "upsert_creator_profile");
     if (!functionId) {
-      setProfileMessage("Marketplace contract is not configured for profile commits.");
+      setProfileMessage("Profile publishing needs the Payby marketplace contract address.");
       return;
     }
     if (
@@ -5276,7 +5275,7 @@ function ProfilePanel({
         detail: draft.handle,
       });
     } catch (error) {
-      setProfileMessage(userFacingError(error, "Profile commit failed."));
+      setProfileMessage(userFacingError(error, "Profile publish needs attention."));
     } finally {
       setProfileSaving(false);
     }
@@ -5289,7 +5288,7 @@ function ProfilePanel({
           <div>
             <p className="muted">Creator profile</p>
             <h2>{profile.displayName}</h2>
-            <span>Local public identity used across Payby share pages.</span>
+            <span>Public creator identity used across Payby share and discovery pages.</span>
           </div>
           <User size={24} />
         </div>
@@ -5406,14 +5405,14 @@ function ProfilePanel({
         <span>@{draft.handle}</span>
         <p>{draft.bio}</p>
         <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
-          <span>{draft.xHandle ? `@${draft.xHandle}` : "X not linked"}</span>
-          <strong>{draft.xVerified ? "X verified" : "X unverified"}</strong>
+          <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
+          <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
         </div>
         <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
         <DetailItem label="Registered media" value={`${mediaCount}`} />
         <DetailItem
           label="On-chain profile"
-          value={chainProfile ? "Committed" : "Not committed"}
+          value={chainProfile ? "Published" : "Ready to publish"}
         />
         {chainProfile?.updatedAt ? (
           <DetailItem
@@ -5476,8 +5475,8 @@ function ActivityPanel({
   const filters: { value: "all" | TransactionStatus | "local"; label: string }[] = [
     { value: "all", label: "All proof" },
     { value: "confirmed", label: "Confirmed" },
-    { value: "pending", label: "Pending" },
-    { value: "failed", label: "Failed" },
+    { value: "pending", label: "In progress" },
+    { value: "failed", label: "Needs attention" },
     { value: "local", label: "Local events" },
   ];
 
@@ -5536,7 +5535,7 @@ function ActivityPanel({
         </div>
         <div>
           <AlertTriangle size={18} />
-          <span>Failed</span>
+          <span>Attention</span>
           <strong>{failedCount}</strong>
         </div>
       </div>
@@ -5566,7 +5565,11 @@ function ActivityPanel({
               <li className={`is-${item.status}`} key={item.id}>
                 <span className="tx-status-pill">
                   <i aria-hidden="true" />
-                  {item.status}
+                  {item.status === "failed"
+                    ? "needs attention"
+                    : item.status === "pending"
+                      ? "in progress"
+                      : item.status}
                 </span>
                 <div>
                   <strong>{item.label}</strong>
@@ -5919,8 +5922,8 @@ function CreatorDiscoveryPanel({
           />
         ) : loadState === "error" ? (
           <EmptyState
-            title="Creator lookup failed"
-            body="The active fullnode could not read this creator registry. Check the address and network."
+            title="Creator lookup needs refresh"
+            body="Payby could not read this creator registry from the active route. Check the address, then refresh."
           />
         ) : loadState === "empty" ? (
           <EmptyState
@@ -5967,11 +5970,11 @@ function CreatorDiscoveryPanel({
       <aside className="support-panel">
         <div>
           <p className="muted">Creator proof</p>
-          <h3>{normalizedCreator ? shortenAddress(normalizedCreator) : "No creator"}</h3>
+          <h3>{normalizedCreator ? shortenAddress(normalizedCreator) : "Choose creator"}</h3>
         </div>
         <div className="network-mini-card">
           <span>Connected wallet</span>
-          <strong>{accountAddress ? shortenAddress(accountAddress) : "No wallet"}</strong>
+          <strong>{accountAddress ? shortenAddress(accountAddress) : "Connect wallet"}</strong>
           <p>
             Buyer actions use the currently connected wallet. You do not need to
             switch to the creator wallet to browse or purchase.
@@ -6102,8 +6105,8 @@ function BuyerLibraryPanel({
     if (state === "checking") return "Checking chain";
     if (state === "allowed") return "On-chain access";
     if (state === "denied") return "No chain access";
-    if (state === "error") return "Proof failed";
-    if (state === "unconfigured") return "No contract";
+    if (state === "error") return "Refresh proof";
+    if (state === "unconfigured") return "Registry setup needed";
     return "Proof not checked";
   }
 
@@ -6114,8 +6117,8 @@ function BuyerLibraryPanel({
           <p className="muted">Buyer workspace</p>
           <h2>Buyer library</h2>
           <span>
-            Media unlocked by this wallet. Local receipts are used now and the
-            interface is ready for on-chain purchase index reads.
+            Media unlocked by this wallet, with purchase receipts and on-chain
+            access checks kept wallet-scoped.
           </span>
         </div>
         <ReceiptText size={24} />
@@ -6284,19 +6287,19 @@ function NetworkPanel({
     { label: "Contract", value: network.contractAddress },
     {
       label: "Payby Marketplace",
-      value: network.marketplaceContractAddress || "Not configured",
+      value: network.marketplaceContractAddress || "Setup needed",
     },
     {
       label: "Payment Asset",
-      value: network.paymentAssetMetadataAddress || "Not configured",
+      value: network.paymentAssetMetadataAddress || "Setup needed",
     },
     {
       label: "APT Payment Asset",
-      value: network.paymentAssets.APT || "Not configured",
+      value: network.paymentAssets.APT || "Setup needed",
     },
     {
       label: "ShelbyUSD Payment Asset",
-      value: network.paymentAssets.SHELBYUSD || "Not configured",
+      value: network.paymentAssets.SHELBYUSD || "Setup needed",
     },
   ];
   const proofRows = [
@@ -6321,9 +6324,9 @@ function NetworkPanel({
       ok: Boolean(network.marketplaceContractAddress),
     },
     {
-      label: "Retrieval mode",
-      state: "Direct Shelby",
-      detail: "Payby retrieves media directly from Shelby while Early Access is pending.",
+      label: "Retrieval",
+      state: "Shelby route",
+      detail: "Payby retrieves media through the active Shelby storage route.",
       ok: true,
     },
   ];
@@ -6364,7 +6367,7 @@ function NetworkPanel({
           </span>
           <span>
             <Database size={15} />
-            Direct retrieval
+            Shelby retrieval
           </span>
         </div>
       </div>
@@ -6389,8 +6392,8 @@ function NetworkPanel({
               : metadataSyncState === "syncing"
                 ? "Checking"
                 : metadataSyncState === "offline"
-                  ? "Local fallback"
-                  : "Local mode"}
+                  ? "Offline cache"
+                  : "Ready"}
           </strong>
         </div>
       </div>
@@ -6413,7 +6416,7 @@ function NetworkPanel({
           <strong>{accountAddress ? shortenAddress(accountAddress) : "Connect wallet"}</strong>
           <p>
             Upload registration requires network gas and Shelby storage
-            resources. Keep test funds available before publishing large media.
+            resources. Keep route funds available before publishing large media.
           </p>
         </div>
         <a
@@ -6653,9 +6656,9 @@ function PublicCreatorPage({
         </div>
 
         {loadState === "checking" ? (
-          <EmptyState title="Loading creator vault" body="Reading creator listings from the Payby marketplace registry." />
-        ) : loadState === "error" ? (
-          <EmptyState title="Could not load creator" body="The active fullnode did not return this creator registry." />
+        <EmptyState title="Loading creator vault" body="Reading creator listings from the Payby marketplace registry." />
+      ) : loadState === "error" ? (
+          <EmptyState title="Creator vault needs refresh" body="The active fullnode did not return this creator registry. Refresh the route and reopen this creator." />
         ) : items.length === 0 ? (
           <EmptyState title="No public media" body="This creator has no public or unlisted Payby media on the active route." />
         ) : (
@@ -6778,8 +6781,8 @@ function PublicMediaPage({
         : chainListingState === "missing"
           ? "Not registered"
           : chainListingState === "unconfigured"
-            ? "No contract"
-            : "Read failed";
+            ? "Registry setup needed"
+            : "Refresh needed";
   const chainAccessLabel =
     chainAccessState === "checking"
       ? "Checking"
@@ -6788,9 +6791,9 @@ function PublicMediaPage({
         : chainAccessState === "denied"
           ? "Denied"
           : chainAccessState === "unconfigured"
-            ? "No contract"
+            ? "Registry setup needed"
             : chainAccessState === "error"
-              ? "Read failed"
+              ? "Refresh needed"
               : "Wallet needed";
 
   React.useEffect(() => {
@@ -6958,7 +6961,7 @@ function PublicMediaPage({
         detail:
           error instanceof Error
             ? error.message
-            : "Paid unlock transaction failed.",
+            : "Paid unlock transaction needs attention.",
       });
       throw error;
     }
@@ -7049,7 +7052,7 @@ function PublicMediaPage({
                 : "denied",
           );
           if (!verifiedAccess) {
-            throw new Error("Purchase confirmed, but Aptos access proof is not visible yet. Wait a few seconds and try again.");
+            throw new Error("Purchase confirmed, but Aptos access proof is still indexing. Wait a few seconds, then refresh access.");
           }
         }
       }
@@ -7124,7 +7127,7 @@ function PublicMediaPage({
             <div className="is-ready">
               <Database size={17} />
               <span>Retrieval</span>
-              <strong>Direct Shelby</strong>
+              <strong>Shelby route</strong>
             </div>
             <div
               className={
