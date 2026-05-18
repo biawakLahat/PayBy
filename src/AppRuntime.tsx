@@ -1997,8 +1997,8 @@ function LandingPage({
           <PaybyLogo />
         </button>
         <nav className="landing-links" aria-label="Landing sections">
-          <a href="#protocol">Protocol</a>
-          <a href="#creator-os">Creator OS</a>
+          <a href="#protocol">Flow</a>
+          <a href="#creator-os">Creator tools</a>
           <a href="#networks">Networks</a>
         </nav>
         <div className="nav-actions">
@@ -2015,21 +2015,21 @@ function LandingPage({
           <div className="hero-copy">
             <span className="hero-pill">
               <ShieldCheck size={16} />
-              Shelby-native vault for Aptos creators
+              Shelby storage with Aptos access records
             </span>
             <h1>Payby</h1>
             <p>
-              A polished creator media vault for premium files, wallet-signed
-              publishing, visible Shelby routing, and storage operations that
-              feel native to Web3.
+              Publish media to Shelby, record listing and access policy on
+              Aptos, then share wallet-aware pages buyers can open from their
+              own account.
             </p>
             <div className="hero-actions">
               <button className="button button-primary button-xl" onClick={onLaunch}>
-                Launch dApp
+                Open workspace
                 <ArrowRight size={19} />
               </button>
               <a className="button button-ghost button-xl" href="#protocol">
-                Explore flow
+                See publish flow
                 <span className="route-action-icon" aria-hidden="true">
                   <NetworkRouteMark />
                 </span>
@@ -2038,15 +2038,15 @@ function LandingPage({
             <div className="trust-row" aria-label="Payby capabilities">
               <span>
                 <Check size={15} />
-                Shelby upload
+                Shelby storage
               </span>
               <span>
                 <Check size={15} />
-                Wallet signer
+                Aptos registry
               </span>
               <span>
                 <Check size={15} />
-                Dual network
+                Buyer receipts
               </span>
             </div>
           </div>
@@ -2055,17 +2055,17 @@ function LandingPage({
             <div className="vault-scene">
               <div className="scene-grid" />
               <div className="hero-console console-one">
-                <span>PAYBY ROUTE</span>
+                <span>STORAGE ROUTE</span>
                 <strong>shelby://creator/media</strong>
-                <i>signed upload ready</i>
+                <i>wallet signature required</i>
               </div>
               <div className="media-stack">
                 <span>
-                  <i>4K</i>
+                  <i>FILM</i>
                   <b>VIDEO</b>
                 </span>
                 <span>
-                  <i>24B</i>
+                  <i>WAV</i>
                   <b>AUDIO</b>
                 </span>
                 <span>
@@ -2075,11 +2075,11 @@ function LandingPage({
               </div>
               <div className="data-lane lane-one">
                 <span>creator-film.mov</span>
-                <strong>registered</strong>
+                <strong>listing recorded</strong>
               </div>
               <div className="data-lane lane-two">
                 <span>vault-audio.wav</span>
-                <strong>shelby rpc</strong>
+                <strong>Shelby route</strong>
               </div>
               <div className="vault-ring ring-one" />
               <div className="vault-ring ring-two" />
@@ -2100,59 +2100,59 @@ function LandingPage({
 
       <section className="landing-band protocol-band" id="protocol">
         <div className="section-heading reveal-on-scroll">
-          <span className="eyebrow">Creator publishing flow</span>
-          <h2>From media file to wallet-signed Shelby storage.</h2>
+          <span className="eyebrow">Publishing flow</span>
+          <h2>From private file to buyer-ready media.</h2>
         </div>
         <div className="protocol-flow">
           <article className="reveal-on-scroll">
             <span>01</span>
-            <h3>Stage premium media</h3>
-            <p>Drop video, audio, archives, or creator assets into the vault.</p>
+            <h3>Select media</h3>
+            <p>Add video, audio, images, archives, or creator assets to the vault.</p>
           </article>
           <article className="reveal-on-scroll">
             <span>02</span>
-            <h3>Sign with wallet</h3>
-            <p>Register blob commitments through the connected Aptos wallet.</p>
+            <h3>Record access</h3>
+            <p>Choose visibility, pricing, and policy before signing with your wallet.</p>
           </article>
           <article className="reveal-on-scroll">
             <span>03</span>
-            <h3>Publish to Shelby</h3>
-            <p>Store media on the selected Shelby route with wallet-backed provenance.</p>
+            <h3>Store on Shelby</h3>
+            <p>Upload the media and keep the listing tied to the creator wallet.</p>
           </article>
         </div>
       </section>
 
       <section className="landing-band" id="creator-os">
         <div className="section-heading compact-heading reveal-on-scroll">
-          <span className="eyebrow">Built for real dApp usage</span>
-          <h2>Not a file picker. A creator storage console.</h2>
+          <span className="eyebrow">Creator tools</span>
+          <h2>Publish, price, and prove media from one workspace.</h2>
         </div>
         <div className="feature-grid">
           <article className="feature-card feature-card-large reveal-on-scroll">
-            <span className="feature-kicker">Publishing surface</span>
+            <span className="feature-kicker">Vault workflow</span>
             <FileVideo size={24} />
-            <h3>Media-first vault</h3>
+            <h3>Media library</h3>
             <p>
-              Stage files, review size and retention, then publish blobs through
-              Shelby's React upload mutation.
+              Stage files, review size and retention, then publish directly to
+              the selected Shelby route.
             </p>
           </article>
           <article className="feature-card reveal-on-scroll">
-            <span className="feature-kicker">Signer control</span>
+            <span className="feature-kicker">Ownership</span>
             <Wallet size={24} />
-            <h3>Wallet-controlled</h3>
+            <h3>Wallet-owned records</h3>
             <p>
-              Uploads use an Aptos wallet signer, keeping creator identity and
-              on-chain registration in one workflow.
+              Listings, purchases, and creator profile state are scoped to the
+              connected Aptos wallet.
             </p>
           </article>
           <article className="feature-card feature-card-cool reveal-on-scroll">
-            <span className="feature-kicker">Network proof</span>
+            <span className="feature-kicker">Route visibility</span>
             <Database size={24} />
-            <h3>Inspectable networks</h3>
+            <h3>Inspectable routes</h3>
             <p>
-              Switch between Shelbynet and Shelby Testnet while keeping RPC,
-              fullnode, indexer, and contract details visible.
+              Switch between Shelbynet and Shelby Testnet with RPC, fullnode,
+              indexer, and contract details visible in the app.
             </p>
           </article>
         </div>
@@ -2160,11 +2160,12 @@ function LandingPage({
 
       <section className="network-showcase reveal-on-scroll" id="networks">
         <div>
-          <span className="eyebrow">Network aware</span>
-          <h2>Shelbynet and Shelby Testnet are first-class routes.</h2>
+          <span className="eyebrow">Network routes</span>
+          <h2>Verify the route before every publish.</h2>
           <p>
-            Payby surfaces the RPC, fullnode, indexer, and contract details so
-            creators can see where media is being registered and stored.
+            Payby shows the active Shelby RPC, Aptos fullnode, indexer, and
+            marketplace contract so creators know exactly where media and policy
+            records are being written.
           </p>
         </div>
         <button className="button button-primary button-xl" onClick={onLaunch}>
