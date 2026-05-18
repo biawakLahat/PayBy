@@ -20,6 +20,7 @@ import {
   ListChecks,
   Lock,
   Moon,
+  Pencil,
   PlayCircle,
   PlugZap,
   Search,
@@ -5169,16 +5170,34 @@ function ProfilePanel({
   const [profileSaving, setProfileSaving] = React.useState(false);
   const [chainProfile, setChainProfile] = React.useState<CreatorProfile | null>(null);
   const avatarInputId = React.useId();
+  const hasProfileIdentity = Boolean(
+    profile.avatarUrl ||
+      profile.website ||
+      profile.xHandle ||
+      profile.displayName !== "Payby Creator" ||
+      profile.handle !== "payby" ||
+      profile.bio !== "Premium media publishing on Shelby and Aptos.",
+  );
+  const [isEditingProfile, setIsEditingProfile] = React.useState(
+    () => !hasProfileIdentity,
+  );
   const walletNetworkAligned = isWalletNetworkAligned(
     walletNetwork,
     selectedNetwork,
   );
+  const creatorUrl = accountAddress
+    ? `${window.location.origin}/creator/${encodeURIComponent(accountAddress)}`
+    : "";
 
   React.useEffect(() => {
     setDraft(profile);
     setAvatarPreview(profile.avatarUrl);
     setAvatarFileName("");
   }, [profile]);
+
+  React.useEffect(() => {
+    if (!hasProfileIdentity) setIsEditingProfile(true);
+  }, [hasProfileIdentity]);
 
   React.useEffect(() => {
     if (!accountAddress || !PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress) {
@@ -5194,6 +5213,7 @@ function ProfilePanel({
         if (nextProfile) {
           saveProfile(nextProfile);
           setDraft(nextProfile);
+          setIsEditingProfile(false);
         }
       })
       .catch(() => {
@@ -5209,6 +5229,7 @@ function ProfilePanel({
     saveProfile({ ...draft, updatedAt: Date.now() });
     if (!account) {
       setProfileMessage("Profile saved in this browser. Connect your wallet to publish it on-chain.");
+      setIsEditingProfile(false);
       return;
     }
     if (!walletNetworkAligned) {
@@ -5269,6 +5290,7 @@ function ProfilePanel({
         saveProfile(committed);
         setDraft(committed);
       }
+      setIsEditingProfile(false);
       setProfileMessage("Creator profile committed on-chain.");
       addActivity({
         type: "metadata",
@@ -5282,133 +5304,202 @@ function ProfilePanel({
     }
   }
 
+  async function copyCreatorLink() {
+    if (!creatorUrl) return;
+    await navigator.clipboard.writeText(creatorUrl);
+    setProfileMessage("Creator profile link copied.");
+  }
+
   return (
     <section className="workspace-layout profile-layout">
-      <div className="panel profile-panel">
-        <div className="panel-header hero-panel-header">
-          <div>
-            <p className="muted">Creator profile</p>
-            <h2>{profile.displayName}</h2>
-            <span>Public creator identity used across Payby share and discovery pages.</span>
+      {isEditingProfile ? (
+        <div className="panel profile-panel">
+          <div className="panel-header hero-panel-header">
+            <div>
+              <p className="muted">Edit creator profile</p>
+              <h2>{profile.displayName}</h2>
+              <span>Update the identity buyers see on Payby creator and media pages.</span>
+            </div>
+            <User size={24} />
           </div>
-          <User size={24} />
-        </div>
-        <div className="metadata-form">
-          <label>
-            <span>Display name</span>
-            <input
-              value={draft.displayName}
-              onChange={(event) =>
-                setDraft({ ...draft, displayName: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span>Handle</span>
-            <input
-              value={draft.handle}
-              onChange={(event) => setDraft({ ...draft, handle: event.target.value })}
-            />
-          </label>
-          <label className="form-wide">
-            <span>Bio</span>
-            <textarea
-              value={draft.bio}
-              onChange={(event) => setDraft({ ...draft, bio: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>Avatar URL</span>
-            <input
-              value={draft.avatarUrl}
-              onChange={(event) => {
-                const nextUrl = event.target.value;
-                setAvatarPreview(nextUrl);
-                setAvatarFileName("");
-                setDraft({ ...draft, avatarUrl: nextUrl });
-              }}
-            />
-          </label>
-          <div className="avatar-picker-field">
-            <span>Avatar image</span>
-            <input
-              id={avatarInputId}
-              className="avatar-file-input"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              aria-label="Choose creator avatar image"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                setProfileMessage("Optimizing avatar for on-chain profile.");
-                void prepareAvatarDataUrl(file)
-                  .then((nextUrl) => {
-                    setAvatarPreview(nextUrl);
-                    setAvatarFileName(file.name);
-                    setDraft((current) => ({ ...current, avatarUrl: nextUrl }));
-                    setProfileMessage("Avatar ready. Save profile to commit it on-chain.");
+          <div className="metadata-form">
+            <label>
+              <span>Display name</span>
+              <input
+                value={draft.displayName}
+                onChange={(event) =>
+                  setDraft({ ...draft, displayName: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              <span>Handle</span>
+              <input
+                value={draft.handle}
+                onChange={(event) => setDraft({ ...draft, handle: event.target.value })}
+              />
+            </label>
+            <label className="form-wide">
+              <span>Bio</span>
+              <textarea
+                value={draft.bio}
+                onChange={(event) => setDraft({ ...draft, bio: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>Avatar URL</span>
+              <input
+                value={draft.avatarUrl}
+                onChange={(event) => {
+                  const nextUrl = event.target.value;
+                  setAvatarPreview(nextUrl);
+                  setAvatarFileName("");
+                  setDraft({ ...draft, avatarUrl: nextUrl });
+                }}
+              />
+            </label>
+            <div className="avatar-picker-field">
+              <span>Avatar image</span>
+              <input
+                id={avatarInputId}
+                className="avatar-file-input"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                aria-label="Choose creator avatar image"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setProfileMessage("Optimizing avatar for on-chain profile.");
+                  void prepareAvatarDataUrl(file)
+                    .then((nextUrl) => {
+                      setAvatarPreview(nextUrl);
+                      setAvatarFileName(file.name);
+                      setDraft((current) => ({ ...current, avatarUrl: nextUrl }));
+                      setProfileMessage("Avatar ready. Save profile to commit it on-chain.");
+                    })
+                    .catch((error) => {
+                      setProfileMessage(userFacingError(error, "Avatar could not be prepared."));
+                      event.currentTarget.value = "";
+                    });
+                }}
+              />
+              <label className="avatar-picker-control" htmlFor={avatarInputId}>
+                <i aria-hidden="true">
+                  <Image size={18} />
+                </i>
+                <div>
+                  <strong>{avatarFileName || "Choose avatar"}</strong>
+                  <small>PNG, JPG, WebP, or GIF - optimized for profile</small>
+                </div>
+                <em>Browse</em>
+              </label>
+            </div>
+            <label>
+              <span>Website</span>
+              <input
+                value={draft.website}
+                onChange={(event) => setDraft({ ...draft, website: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>X handle</span>
+              <input
+                value={draft.xHandle ?? ""}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    xHandle: event.target.value.replace(/^@/, ""),
+                    xVerified: false,
                   })
-                  .catch((error) => {
-                    setProfileMessage(userFacingError(error, "Avatar could not be prepared."));
-                    event.currentTarget.value = "";
-                  });
-              }}
-            />
-            <label className="avatar-picker-control" htmlFor={avatarInputId}>
-              <i aria-hidden="true">
-                <Image size={18} />
-              </i>
-              <div>
-                <strong>{avatarFileName || "Choose avatar"}</strong>
-                <small>PNG, JPG, WebP, or GIF - optimized for profile</small>
-              </div>
-              <em>Browse</em>
+                }
+                placeholder="username"
+              />
             </label>
           </div>
-          <label>
-            <span>Website</span>
-            <input
-              value={draft.website}
-              onChange={(event) => setDraft({ ...draft, website: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>X handle</span>
-            <input
-              value={draft.xHandle ?? ""}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  xHandle: event.target.value.replace(/^@/, ""),
-                  xVerified: false,
-                })
-              }
-              placeholder="username"
-            />
-          </label>
-        </div>
-        <button
-          className="button button-primary publish-button"
-          type="button"
-          disabled={profileSaving}
-          onClick={saveProfileOnChain}
-        >
-          <Check size={17} />
-          {profileSaving ? "Committing profile..." : "Save profile"}
-        </button>
-        {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
-      </div>
-      <aside className="support-panel profile-card-preview">
-        <div className="profile-preview-top">
-          <div className="avatar-preview">
-            {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+          <div className="profile-form-actions">
+            <button
+              className="button button-primary publish-button"
+              type="button"
+              disabled={profileSaving}
+              onClick={saveProfileOnChain}
+            >
+              <Check size={17} />
+              {profileSaving ? "Committing profile..." : "Save profile"}
+            </button>
+            {hasProfileIdentity ? (
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={profileSaving}
+                onClick={() => {
+                  setDraft(profile);
+                  setAvatarPreview(profile.avatarUrl);
+                  setAvatarFileName("");
+                  setIsEditingProfile(false);
+                }}
+              >
+                Cancel
+              </button>
+            ) : null}
           </div>
-          <div className="profile-identity">
-            <strong>{draft.displayName}</strong>
-            <span>@{draft.handle}</span>
-            <p>{draft.bio}</p>
-          </div>
+          {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
         </div>
+      ) : (
+        <div className="panel profile-card-preview profile-card-final">
+          <div className="profile-preview-top">
+            <div className="avatar-preview">
+              {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+            </div>
+            <div className="profile-identity">
+              <span>Creator profile</span>
+              <strong>{draft.displayName}</strong>
+              <em>@{draft.handle}</em>
+              <p>{draft.bio}</p>
+            </div>
+          </div>
+          <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
+            <div>
+              <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
+              <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <div className="profile-stats">
+            <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
+            <DetailItem label="Media" value={`${mediaCount}`} />
+            <DetailItem
+              label="Profile"
+              value={chainProfile ? "Published" : "Ready"}
+            />
+            {chainProfile?.updatedAt ? (
+              <DetailItem
+                label="Updated"
+                value={new Date(chainProfile.updatedAt).toLocaleDateString()}
+              />
+            ) : null}
+          </div>
+          {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
+        </div>
+      )}
+      <aside className="support-panel profile-actions-panel">
+        <div>
+          <p className="muted">Creator identity</p>
+          <h3>{isEditingProfile ? "Live preview" : "Profile actions"}</h3>
+        </div>
+        {isEditingProfile ? (
+          <div className="profile-card-preview profile-card-compact">
+            <div className="profile-preview-top">
+              <div className="avatar-preview">
+                {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+              </div>
+              <div className="profile-identity">
+                <strong>{draft.displayName}</strong>
+                <span>@{draft.handle}</span>
+                <p>{draft.bio}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
           <div>
             <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
@@ -5430,6 +5521,16 @@ function ProfilePanel({
             />
           ) : null}
         </div>
+        {!isEditingProfile ? (
+          <button
+            className="button button-primary"
+            type="button"
+            onClick={() => setIsEditingProfile(true)}
+          >
+            <Pencil size={17} />
+            Edit profile
+          </button>
+        ) : null}
         <button
           className="button button-secondary profile-card-cta"
           type="button"
@@ -5437,7 +5538,16 @@ function ProfilePanel({
           onClick={() => onNavigate({ name: "creator", owner: accountAddress })}
         >
           <ExternalLink size={17} />
-          Public creator page
+          View public profile
+        </button>
+        <button
+          className="button button-secondary profile-card-cta"
+          type="button"
+          disabled={!creatorUrl}
+          onClick={copyCreatorLink}
+        >
+          <Copy size={17} />
+          Copy creator link
         </button>
       </aside>
     </section>
