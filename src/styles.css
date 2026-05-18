@@ -3238,17 +3238,44 @@ a {
 
 .transaction-link {
   width: fit-content;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: color-mix(in oklch, var(--text) 78%, var(--accent));
-  font-size: 0.8rem;
-  font-weight: 900;
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 58%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
+  color: var(--text);
+  padding: 0 var(--space-md);
+  font-size: 0.76rem;
+  font-weight: 950;
+  line-height: 1;
   text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-inset);
+  transition:
+    transform var(--duration-fast) var(--ease-out-quint),
+    border-color var(--duration-fast) var(--ease-out-quint),
+    color var(--duration-fast) var(--ease-out-quint),
+    background var(--duration-fast) var(--ease-out-quint);
 }
 
 .transaction-link:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
   color: var(--accent);
+}
+
+.transaction-link.shelby-link {
+  border-color: color-mix(in oklch, var(--cool) 30%, var(--line));
+  color: color-mix(in oklch, var(--text) 86%, var(--cool));
+}
+
+.transaction-link.shelby-link:hover {
+  border-color: color-mix(in oklch, var(--cool) 52%, var(--line));
+  color: var(--cool);
 }
 
 .pending-publish-card {
@@ -3378,17 +3405,23 @@ a {
 }
 
 .pending-publish-item.is-failed .pending-state-dot,
-.transaction-history li.is-failed > span {
+.transaction-history li.is-failed .tx-status-pill {
   background: var(--danger);
-  color: var(--danger);
-  box-shadow: 0 0 0 5px color-mix(in oklch, var(--danger) 13%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in oklch, var(--danger) 58%, var(--line));
 }
 
 .pending-publish-item.is-ready .pending-state-dot,
-.transaction-history li.is-confirmed > span {
+.transaction-history li.is-confirmed .tx-status-pill {
   background: var(--success);
-  color: var(--success);
-  box-shadow: 0 0 0 5px color-mix(in oklch, var(--success) 13%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in oklch, var(--success) 58%, var(--line));
+}
+
+.transaction-history li.is-pending .tx-status-pill {
+  background: color-mix(in oklch, var(--warning) 18%, transparent);
+  color: var(--warning);
+  border-color: color-mix(in oklch, var(--warning) 44%, var(--line));
 }
 
 .pending-publish-item strong,
@@ -5205,31 +5238,47 @@ a {
 .transaction-history {
   display: grid;
   gap: var(--space-md);
-  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 66%, transparent);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(135deg, color-mix(in oklch, var(--cool) 5%, transparent), transparent 42%),
-    color-mix(in oklch, var(--surface-strong) 58%, transparent);
-  padding: var(--space-lg);
+    linear-gradient(135deg, color-mix(in oklch, var(--cool) 4%, transparent), transparent 42%),
+    color-mix(in oklch, var(--surface-strong) 44%, transparent);
+  padding: var(--space-md);
   margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-inset);
 }
 
 .transaction-history li {
+  min-height: 84px;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--space-md);
 }
 
-.transaction-history li > span {
-  min-width: 82px;
+.tx-status-pill {
+  min-width: 104px;
+  min-height: 38px;
   display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 7px;
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   border-radius: 999px;
   background: color-mix(in oklch, var(--accent) 14%, transparent);
   color: var(--accent);
-  padding: 7px 10px;
+  padding: 0 12px;
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
+  box-shadow: var(--shadow-inset);
+}
+
+.tx-status-pill i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in oklch, currentColor 14%, transparent);
 }
 
 .transaction-history time {
@@ -5241,13 +5290,16 @@ a {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: var(--space-xs);
-  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 96px;
+  border: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(145deg, color-mix(in oklch, var(--accent) 5%, transparent), transparent 34%),
-    color-mix(in oklch, var(--surface-strong) 58%, transparent);
-  padding: var(--space-lg);
+    linear-gradient(145deg, color-mix(in oklch, var(--accent) 4%, transparent), transparent 34%),
+    color-mix(in oklch, var(--surface-strong) 48%, transparent);
+  padding: var(--space-md);
   box-shadow: var(--shadow-inset);
   transition:
     transform var(--duration-fast) var(--ease-out-quint),
@@ -5272,6 +5324,54 @@ a {
 .activity-list time {
   color: color-mix(in oklch, var(--muted) 80%, transparent);
   font-size: 0.78rem;
+}
+
+.activity-event-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in oklch, var(--cool) 30%, var(--line));
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 7%, transparent), transparent 58%),
+    color-mix(in oklch, var(--cool) 11%, transparent);
+  color: var(--cool);
+  box-shadow: var(--shadow-inset);
+}
+
+.activity-event-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.activity-event-copy strong,
+.activity-event-copy p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.activity-row-actions em {
+  border: 1px solid color-mix(in oklch, var(--line) 74%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface) 58%, transparent);
+  color: var(--muted);
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .funding-helper {
@@ -6358,6 +6458,7 @@ a {
 
   .pending-publish-item,
   .buyer-library-list li,
+  .activity-list li,
   .transaction-history li {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -6369,9 +6470,16 @@ a {
   .buyer-library-list li .proof-pill,
   .buyer-library-list li .button,
   .buyer-library-list li .icon-button,
+  .activity-list li .activity-row-actions,
+  .transaction-history li .activity-row-actions,
   .transaction-history li .transaction-link {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .activity-list li .activity-row-actions,
+  .transaction-history li .activity-row-actions {
+    justify-content: flex-start;
   }
 
   .buyer-library-list li .proof-pill,

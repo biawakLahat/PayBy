@@ -184,6 +184,7 @@ type ActivityItem = {
   type: "upload" | "delete" | "metadata" | "share";
   label: string;
   detail: string;
+  blobNames?: string[];
 };
 type ActivityInput = Omit<ActivityItem, "id" | "at" | "wallet" | "network">;
 
@@ -223,6 +224,8 @@ type TransactionItem = {
   status: TransactionStatus;
   label: string;
   detail: string;
+  owner?: string;
+  blobNames?: string[];
   createdAt: number;
   updatedAt: number;
 };
@@ -437,6 +440,22 @@ function transactionExplorerUrl(
   transactionHash: string,
 ) {
   return `https://explorer.aptoslabs.com/txn/${transactionHash}?network=${PAYBY_NETWORKS[selectedNetwork].explorerNetwork}`;
+}
+
+function shelbyExplorerNetwork(network: PaybyNetwork) {
+  return network === "shelby-testnet" ? "testnet" : "shelbynet";
+}
+
+function shelbyBlobExplorerUrl(
+  network: PaybyNetwork,
+  owner: string,
+  blobName: string,
+) {
+  const params = new URLSearchParams({
+    owner,
+    blobName,
+  });
+  return `https://explorer.shelby.xyz/${shelbyExplorerNetwork(network)}/blobs?${params.toString()}`;
 }
 
 function getTransactionHash(response: unknown) {
@@ -2939,11 +2958,14 @@ function UploadPanel({
         transactionStore.updateTransaction(activePublishRef.current.hash, {
           status: "confirmed",
           detail: `Registered ${mediaItems.length} ${mediaItems.length === 1 ? "blob" : "blobs"} on ${PAYBY_NETWORKS[selectedNetwork].label}`,
+          owner: accountAddress,
+          blobNames: mediaItems.map((item) => item.blobName),
         });
         addActivity({
           type: "upload",
           label: `Published ${mediaItems.length} media ${mediaItems.length === 1 ? "file" : "files"}`,
           detail: `Stored on ${PAYBY_NETWORKS[selectedNetwork].label}`,
+          blobNames: mediaItems.map((item) => item.blobName),
         });
         void registerAccessListings(items);
       }
@@ -3082,6 +3104,8 @@ function UploadPanel({
             status: "pending",
             label: "Payby access registry",
             detail: `Registering ${item.title} listing and metadata commitment`,
+            owner: item.owner,
+            blobNames: [item.blobName],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
@@ -3107,6 +3131,7 @@ function UploadPanel({
           type: "metadata",
           label: "Access registry failed",
           detail: item.blobName,
+          blobNames: [item.blobName],
         });
         return;
       }
@@ -3125,6 +3150,7 @@ function UploadPanel({
       type: "metadata",
       label: "Registered on-chain listings",
       detail: registryItems.map((item) => item.blobName).join(", "),
+      blobNames: registryItems.map((item) => item.blobName),
     });
   }
 
@@ -3285,6 +3311,8 @@ function UploadPanel({
             status: "pending",
             label: "Shelby blob registration",
             detail: `Waiting for Aptos finality on ${PAYBY_NETWORKS[selectedNetwork].label}`,
+            owner: accountAddress,
+            blobNames: mediaItems.map((item) => item.blobName),
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
@@ -5458,6 +5486,24 @@ function ActivityPanel({
     setLocalPage(1);
   }, [accountAddress, filter, selectedNetwork]);
 
+  function getActivityBlobNames(item: ActivityItem) {
+    if (item.blobNames?.length) return item.blobNames;
+    if (!["upload", "metadata", "share", "delete"].includes(item.type)) return [];
+    if (!item.detail || item.detail.startsWith("Stored on ")) return [];
+    return item.detail
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part && !part.startsWith("0x") && /[./_-]/.test(part))
+      .slice(0, 4);
+  }
+
+  function activityIcon(type: ActivityItem["type"]) {
+    if (type === "upload") return <UploadCloud size={17} />;
+    if (type === "delete") return <Trash2 size={17} />;
+    if (type === "share") return <Share2 size={17} />;
+    return <Database size={17} />;
+  }
+
   return (
     <section className="panel activity-panel">
       <div className="panel-header hero-panel-header">
@@ -5518,21 +5564,37 @@ function ActivityPanel({
           <ul>
             {paginatedTransactions.map((item) => (
               <li className={`is-${item.status}`} key={item.id}>
-                <span>{item.status}</span>
+                <span className="tx-status-pill">
+                  <i aria-hidden="true" />
+                  {item.status}
+                </span>
                 <div>
                   <strong>{item.label}</strong>
                   <p>{item.detail}</p>
                   <time>{new Date(item.updatedAt).toLocaleString()}</time>
                 </div>
-                <a
-                  className="transaction-link"
-                  href={transactionExplorerUrl(item.network, item.hash)}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Explorer
-                  <ExternalLink size={14} />
-                </a>
+                <div className="activity-row-actions">
+                  {item.owner && item.blobNames?.[0] ? (
+                    <a
+                      className="transaction-link shelby-link"
+                      href={shelbyBlobExplorerUrl(item.network, item.owner, item.blobNames[0])}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Shelby blob
+                      <ExternalLink size={14} />
+                    </a>
+                  ) : null}
+                  <a
+                    className="transaction-link"
+                    href={transactionExplorerUrl(item.network, item.hash)}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Aptos tx
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
               </li>
             ))}
           </ul>
@@ -5561,14 +5623,34 @@ function ActivityPanel({
       ) : showLocalEvents && activity.length > 0 ? (
         <>
           <ul className="activity-list">
-            {paginatedActivity.map((item) => (
-              <li key={item.id}>
-                <span>{item.type}</span>
-                <strong>{item.label}</strong>
-                <p>{item.detail}</p>
-                <time>{new Date(item.at).toLocaleString()}</time>
-              </li>
-            ))}
+            {paginatedActivity.map((item) => {
+              const blobNames = getActivityBlobNames(item);
+              return (
+                <li key={item.id}>
+                  <div className="activity-event-icon">{activityIcon(item.type)}</div>
+                  <div className="activity-event-copy">
+                    <span>{item.type}</span>
+                    <strong>{item.label}</strong>
+                    <p>{item.detail}</p>
+                    <time>{new Date(item.at).toLocaleString()}</time>
+                  </div>
+                  <div className="activity-row-actions">
+                    {blobNames[0] ? (
+                      <a
+                        className="transaction-link shelby-link"
+                        href={shelbyBlobExplorerUrl(selectedNetwork, accountAddress, blobNames[0])}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Shelby blob
+                        <ExternalLink size={14} />
+                      </a>
+                    ) : null}
+                    {blobNames.length > 1 ? <em>{blobNames.length} blobs</em> : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           <PaginationControls
             label="Local activity pagination"
