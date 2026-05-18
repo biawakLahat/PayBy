@@ -16,7 +16,8 @@ Core workflows:
 - Support free, paid, private, and allowlist-oriented media policies.
 - Transfer paid unlock payments to the creator and record buyer purchase proofs on Aptos.
 - Keep vault, activity, and library views scoped to the connected wallet.
-- Publish an on-chain creator profile for public creator pages.
+- Publish an on-chain creator profile for public creator pages, avatar identity, and X handle status.
+- Discover external creator vaults by wallet address without mixing them into the connected wallet vault.
 - Surface creator sales, listing-level sales, and buyer purchase history from the Move registry.
 - Operate across Shelbynet and Shelby Testnet routes.
 
@@ -90,6 +91,7 @@ Important entry functions:
 - `upsert_listing_for_owner_with_metadata`
 - `purchase_from`
 - `upsert_creator_profile`
+- `upsert_creator_profile_v2`
 - `delist_for_owner`
 
 Important view functions:
@@ -104,6 +106,7 @@ Important view functions:
 - `get_sales_summary`
 - `get_listing_sales_summary`
 - `get_creator_profile`
+- `get_creator_profile_v2`
 - `can_access_for_owner`
 
 The frontend keeps fallback reads for older registry records, but new publishes use the owner-scoped registry path.
@@ -247,6 +250,8 @@ Before inviting external users:
 - Complete purchase from wallet B and verify `purchase_from` records the unlock on-chain.
 - Confirm wallet A sees updated creator revenue and listing-level sales.
 - Commit the creator profile on-chain and open `/creator/<wallet-address>`.
+- Open `/app/discover`, browse an external creator wallet, and verify the connected wallet does not change the creator vault scope.
+- Open `/app/analytics` from the creator wallet and verify creator revenue and listing-level sales are read on-chain.
 - Connect wallet C and confirm wallet C does not inherit wallet B activity or purchase state.
 - Delete a listing from wallet A and confirm the public page no longer treats it as active.
 - Repeat the same path on Shelby Testnet after Early Access is granted.

@@ -121,6 +121,21 @@ module payby_marketplace::payby_marketplace {
         profiles: Table<address, CreatorProfile>,
     }
 
+    struct CreatorProfileV2 has store, copy, drop {
+        display_name: String,
+        handle: String,
+        bio: String,
+        avatar_url: String,
+        website: String,
+        x_handle: String,
+        x_verified: bool,
+        updated_at_secs: u64,
+    }
+
+    struct ProfileRegistryV2 has key {
+        profiles: Table<address, CreatorProfileV2>,
+    }
+
     #[event]
     struct ListingCreated has drop, store {
         owner: address,
@@ -214,6 +229,12 @@ module payby_marketplace::payby_marketplace {
         if (!exists<ProfileRegistry>(admin_addr)) {
             move_to(admin, ProfileRegistry {
                 profiles: table::new<address, CreatorProfile>(),
+            });
+        };
+
+        if (!exists<ProfileRegistryV2>(admin_addr)) {
+            move_to(admin, ProfileRegistryV2 {
+                profiles: table::new<address, CreatorProfileV2>(),
             });
         };
     }
@@ -360,6 +381,49 @@ module payby_marketplace::payby_marketplace {
             current.bio = profile.bio;
             current.avatar_url = profile.avatar_url;
             current.website = profile.website;
+            current.updated_at_secs = profile.updated_at_secs;
+        } else {
+            table::add(&mut registry.profiles, owner_addr, profile);
+        };
+
+        event::emit(CreatorProfileUpdated {
+            owner: owner_addr,
+            handle,
+        });
+    }
+
+    public entry fun upsert_creator_profile_v2(
+        owner: &signer,
+        display_name: String,
+        handle: String,
+        bio: String,
+        avatar_url: String,
+        website: String,
+        x_handle: String,
+        x_verified: bool,
+    ) acquires ProfileRegistryV2 {
+        let owner_addr = signer::address_of(owner);
+        let registry = borrow_global_mut<ProfileRegistryV2>(@payby_marketplace);
+        let profile = CreatorProfileV2 {
+            display_name,
+            handle,
+            bio,
+            avatar_url,
+            website,
+            x_handle,
+            x_verified,
+            updated_at_secs: timestamp::now_seconds(),
+        };
+
+        if (table::contains(&registry.profiles, owner_addr)) {
+            let current = table::borrow_mut(&mut registry.profiles, owner_addr);
+            current.display_name = profile.display_name;
+            current.handle = profile.handle;
+            current.bio = profile.bio;
+            current.avatar_url = profile.avatar_url;
+            current.website = profile.website;
+            current.x_handle = profile.x_handle;
+            current.x_verified = profile.x_verified;
             current.updated_at_secs = profile.updated_at_secs;
         } else {
             table::add(&mut registry.profiles, owner_addr, profile);
@@ -843,6 +907,53 @@ module payby_marketplace::payby_marketplace {
             profile.bio,
             profile.avatar_url,
             profile.website,
+            profile.updated_at_secs,
+            true,
+        )
+    }
+
+    #[view]
+    public fun get_creator_profile_v2(
+        owner: address,
+    ): (String, String, String, String, String, String, bool, u64, bool) acquires ProfileRegistryV2 {
+        if (!exists<ProfileRegistryV2>(@payby_marketplace)) {
+            return (
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                false,
+                0,
+                false,
+            )
+        };
+
+        let registry = borrow_global<ProfileRegistryV2>(@payby_marketplace);
+        if (!table::contains(&registry.profiles, owner)) {
+            return (
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                std::string::utf8(b""),
+                false,
+                0,
+                false,
+            )
+        };
+
+        let profile = table::borrow(&registry.profiles, owner);
+        (
+            profile.display_name,
+            profile.handle,
+            profile.bio,
+            profile.avatar_url,
+            profile.website,
+            profile.x_handle,
+            profile.x_verified,
             profile.updated_at_secs,
             true,
         )

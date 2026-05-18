@@ -110,6 +110,7 @@ async function checkNetwork([key, network]) {
       args: [probeOwner, "__payby_readiness_probe__"],
     },
     { functionName: "get_creator_profile", args: [probeOwner] },
+    { functionName: "get_creator_profile_v2", args: [probeOwner] },
   ];
 
   for (const { functionName, args } of checks) {

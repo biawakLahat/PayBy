@@ -65,6 +65,7 @@ type RouteName =
   | "landing"
   | "vault"
   | "publish"
+  | "analytics"
   | "discover"
   | "library"
   | "network"
@@ -170,6 +171,8 @@ type CreatorProfile = {
   bio: string;
   avatarUrl: string;
   website: string;
+  xHandle?: string;
+  xVerified?: boolean;
   updatedAt?: number;
 };
 
@@ -201,6 +204,15 @@ type RepublishDraft = {
   metadata: MediaMetadata;
   sourceBlobName: string;
   createdAt: number;
+};
+type KnownCreator = {
+  owner: string;
+  network: PaybyNetwork;
+  displayName: string;
+  handle: string;
+  avatarUrl: string;
+  mediaCount: number;
+  savedAt: number;
 };
 
 type TransactionItem = {
@@ -273,6 +285,7 @@ const TRANSACTION_HISTORY_KEY = "payby-transaction-history-v1";
 const PURCHASE_RECEIPTS_KEY = "payby-purchase-receipts-v1";
 const REPUBLISH_DRAFT_KEY = "payby-republish-draft-v1";
 const DISCOVERY_CREATOR_KEY = "payby-discovery-creator-v1";
+const KNOWN_CREATORS_KEY = "payby-known-creators-v1";
 const VAULT_PAGE_SIZE = 8;
 const ACTIVITY_PAGE_SIZE = 8;
 const ZERO_ADDRESS =
@@ -326,6 +339,7 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       };
     }
     if (path.startsWith("/app/publish")) return { name: "publish" };
+    if (path.startsWith("/app/analytics")) return { name: "analytics" };
     if (path.startsWith("/app/discover")) return { name: "discover" };
     if (path.startsWith("/app/library")) return { name: "library" };
     if (path.startsWith("/app/network")) return { name: "network" };
@@ -362,6 +376,7 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       landing: "/",
       vault: "/app/vault",
       publish: "/app/publish",
+      analytics: "/app/analytics",
       discover: "/app/discover",
       library: "/app/library",
       network: "/app/network",
@@ -670,7 +685,9 @@ function marketplaceFunction(
     | "get_sales_summary"
     | "get_listing_sales_summary"
     | "get_creator_profile"
+    | "get_creator_profile_v2"
     | "upsert_creator_profile"
+    | "upsert_creator_profile_v2"
     | "upsert_listing_metadata"
     | "upsert_listing_metadata_for_owner"
     | "upsert_listing_with_metadata"
@@ -976,6 +993,38 @@ async function readCreatorProfile(
   selectedNetwork: PaybyNetwork,
   owner: string,
 ): Promise<CreatorProfile | null> {
+  const v2FunctionId = marketplaceFunction(selectedNetwork, "get_creator_profile_v2");
+  if (v2FunctionId && owner) {
+    try {
+      const data = await callMarketplaceView(selectedNetwork, v2FunctionId, [owner]);
+      const [
+        displayName,
+        handle,
+        bio,
+        avatarUrl,
+        website,
+        xHandle,
+        xVerified,
+        updatedAtSecs,
+        found,
+      ] = data;
+      if (found) {
+        return {
+          displayName: displayName?.toString() || "Payby Creator",
+          handle: handle?.toString() || "payby",
+          bio: bio?.toString() || "Premium media publishing on Shelby and Aptos.",
+          avatarUrl: avatarUrl?.toString() || "",
+          website: website?.toString() || "",
+          xHandle: xHandle?.toString() || "",
+          xVerified: Boolean(xVerified),
+          updatedAt: Number(updatedAtSecs ?? 0) * 1000,
+        };
+      }
+    } catch {
+      // Older deployments may only expose the first profile registry.
+    }
+  }
+
   const functionId = marketplaceFunction(selectedNetwork, "get_creator_profile");
   if (!functionId || !owner) return null;
 
@@ -1249,6 +1298,8 @@ function useCreatorProfile() {
       bio: "Premium media publishing on Shelby and Aptos.",
       avatarUrl: "",
       website: "",
+      xHandle: "",
+      xVerified: false,
     }),
   );
 
@@ -2141,6 +2192,7 @@ function VaultApp({
   const viewTitle = {
     vault: "Vault library",
     publish: "Publish media",
+    analytics: "Creator analytics",
     discover: "Creator discovery",
     library: "Buyer library",
     network: "Network routes",
@@ -2151,6 +2203,7 @@ function VaultApp({
   const viewLabel = {
     vault: "Creator workspace",
     publish: "Shelby upload flow",
+    analytics: "Sales and revenue",
     discover: "Browse creator vaults",
     library: "Buyer workspace",
     network: "Live configuration",
@@ -2185,6 +2238,14 @@ function VaultApp({
           >
             <UploadCloud size={18} />
             Publish
+          </button>
+          <button
+            className={`side-link ${currentView === "analytics" ? "is-active" : ""}`}
+            type="button"
+            onClick={() => onNavigate({ name: "analytics" })}
+          >
+            <CreditCard size={18} />
+            Analytics
           </button>
           <span className="side-nav-label">Buyer</span>
           <button
@@ -2326,6 +2387,14 @@ function VaultApp({
               selectedNetwork={selectedNetwork}
               metadataStore={metadataStore}
               purchaseStore={purchaseStore}
+              onNavigate={onNavigate}
+            />
+          ) : null}
+          {currentView === "analytics" ? (
+            <CreatorAnalyticsPanel
+              accountAddress={accountAddress}
+              selectedNetwork={selectedNetwork}
+              metadataStore={metadataStore}
               onNavigate={onNavigate}
             />
           ) : null}
@@ -2632,6 +2701,153 @@ function StatusTile({ label, value }: { label: string; value: string }) {
       </span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function CreatorAnalyticsPanel({
+  accountAddress,
+  selectedNetwork,
+  metadataStore,
+  onNavigate,
+}: {
+  accountAddress: string;
+  selectedNetwork: PaybyNetwork;
+  metadataStore: ReturnType<typeof useStoredMetadata>;
+  onNavigate: (route: AppRoute) => void;
+}) {
+  const [summary, setSummary] = React.useState<CreatorSalesSummary>({
+    saleCount: 0,
+    revenue: "0",
+  });
+  const [rows, setRows] = React.useState<
+    Array<{ metadata: MediaMetadata; sales: ListingSalesSummary }>
+  >([]);
+  const [state, setState] = React.useState<"idle" | "loading" | "ready" | "error">(
+    accountAddress ? "loading" : "idle",
+  );
+
+  React.useEffect(() => {
+    if (!accountAddress) {
+      setState("idle");
+      return;
+    }
+
+    let cancelled = false;
+    setState("loading");
+    void Promise.all([
+      readCreatorSalesSummary(selectedNetwork, accountAddress).catch(() => null),
+      readCreatorChainListings(selectedNetwork, accountAddress).catch(() => []),
+    ])
+      .then(async ([salesSummary, listings]) => {
+        if (cancelled) return;
+        setSummary(salesSummary ?? { saleCount: 0, revenue: "0" });
+        const nextRows = (
+          await Promise.all(
+            listings.map(async ({ blobName, listing }) => {
+              const metadata =
+                metadataStore.metadata[createMediaKey(accountAddress, blobName)] ??
+                (await fetchCommittedMetadata(
+                  selectedNetwork,
+                  accountAddress,
+                  blobName,
+                  listing,
+                ).catch(() => null)) ??
+                metadataFromChainListing(selectedNetwork, blobName, listing);
+              const listingSales =
+                (await readListingSalesSummary(
+                  selectedNetwork,
+                  accountAddress,
+                  blobName,
+                ).catch(() => null)) ?? { saleCount: 0, revenue: "0" };
+              return { metadata, sales: listingSales };
+            }),
+          )
+        ).sort((a, b) => b.sales.saleCount - a.sales.saleCount);
+        setRows(nextRows);
+        setState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountAddress, metadataStore.metadata, selectedNetwork]);
+
+  const paidRows = rows.filter((row) => row.metadata.accessMode === "paid");
+  const activeMediaCount = rows.length;
+
+  return (
+    <section className="panel analytics-panel">
+      <div className="panel-header hero-panel-header">
+        <div>
+          <p className="muted">Creator revenue</p>
+          <h2>Analytics</h2>
+          <span>
+            Sales and revenue are read from the Payby marketplace contract for
+            the connected creator wallet.
+          </span>
+        </div>
+        <CreditCard size={24} />
+      </div>
+
+      <div className="analytics-summary">
+        <div>
+          <span>Total sales</span>
+          <strong>{summary.saleCount}</strong>
+        </div>
+        <div>
+          <span>Total revenue</span>
+          <strong>{formatAssetUnits(summary.revenue)}</strong>
+        </div>
+        <div>
+          <span>Listed media</span>
+          <strong>{activeMediaCount}</strong>
+        </div>
+        <div>
+          <span>Paid media</span>
+          <strong>{paidRows.length}</strong>
+        </div>
+      </div>
+
+      {state === "idle" ? (
+        <EmptyState title="Wallet required" body="Connect the creator wallet to load analytics." />
+      ) : state === "loading" ? (
+        <EmptyState title="Loading analytics" body="Reading listing sales and revenue from Aptos." />
+      ) : state === "error" ? (
+        <EmptyState title="Analytics unavailable" body="The active fullnode did not return creator sales data." />
+      ) : rows.length === 0 ? (
+        <EmptyState title="No creator listings yet" body="Publish media to start building analytics." actionLabel="Publish media" onAction={() => onNavigate({ name: "publish" })} />
+      ) : (
+        <ul className="analytics-list">
+          {rows.map(({ metadata, sales }) => (
+            <li key={createMediaKey(metadata.owner, metadata.blobName)}>
+              <div>
+                <strong>{metadata.title}</strong>
+                <p>{metadata.category} - {accessModeLabel(metadata.accessMode)}</p>
+              </div>
+              <span>{sales.saleCount} sales</span>
+              <span>{formatAssetUnits(sales.revenue, metadata.currency)}</span>
+              <button
+                className="button button-secondary compact-button"
+                type="button"
+                onClick={() =>
+                  onNavigate({
+                    name: "detail",
+                    owner: metadata.owner,
+                    blobName: metadata.blobName,
+                  })
+                }
+              >
+                Detail
+                <ArrowRight size={15} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -4865,6 +5081,7 @@ function ProfilePanel({
     signAndSubmitTransaction,
   } = useWallet();
   const [draft, setDraft] = React.useState(profile);
+  const [avatarPreview, setAvatarPreview] = React.useState(profile.avatarUrl);
   const [profileMessage, setProfileMessage] = React.useState("");
   const [profileSaving, setProfileSaving] = React.useState(false);
   const [chainProfile, setChainProfile] = React.useState<CreatorProfile | null>(null);
@@ -4875,6 +5092,7 @@ function ProfilePanel({
 
   React.useEffect(() => {
     setDraft(profile);
+    setAvatarPreview(profile.avatarUrl);
   }, [profile]);
 
   React.useEffect(() => {
@@ -4917,7 +5135,9 @@ function ProfilePanel({
       });
       return;
     }
-    const functionId = marketplaceFunction(selectedNetwork, "upsert_creator_profile");
+    const functionId =
+      marketplaceFunction(selectedNetwork, "upsert_creator_profile_v2") ||
+      marketplaceFunction(selectedNetwork, "upsert_creator_profile");
     if (!functionId) {
       setProfileMessage("Marketplace contract is not configured for profile commits.");
       return;
@@ -4929,13 +5149,23 @@ function ProfilePanel({
       const response = await signAndSubmitTransaction({
         data: {
           function: functionId,
-          functionArguments: [
-            draft.displayName.trim() || "Payby Creator",
-            draft.handle.trim() || "payby",
-            draft.bio.trim(),
-            draft.avatarUrl.trim(),
-            draft.website.trim(),
-          ],
+          functionArguments: functionId.includes("upsert_creator_profile_v2")
+            ? [
+                draft.displayName.trim() || "Payby Creator",
+                draft.handle.trim() || "payby",
+                draft.bio.trim(),
+                draft.avatarUrl.trim(),
+                draft.website.trim(),
+                (draft.xHandle ?? "").trim().replace(/^@/, ""),
+                false,
+              ]
+            : [
+                draft.displayName.trim() || "Payby Creator",
+                draft.handle.trim() || "payby",
+                draft.bio.trim(),
+                draft.avatarUrl.trim(),
+                draft.website.trim(),
+              ],
         },
       });
       const hash = getTransactionHash(response);
@@ -5005,10 +5235,46 @@ function ProfilePanel({
             />
           </label>
           <label>
+            <span>Avatar picker</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                if (file.size > 48_000) {
+                  setProfileMessage("Choose an avatar under 48 KB for now.");
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const nextUrl = reader.result?.toString() ?? "";
+                  setAvatarPreview(nextUrl);
+                  setDraft({ ...draft, avatarUrl: nextUrl });
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+          </label>
+          <label>
             <span>Website</span>
             <input
               value={draft.website}
               onChange={(event) => setDraft({ ...draft, website: event.target.value })}
+            />
+          </label>
+          <label>
+            <span>X handle</span>
+            <input
+              value={draft.xHandle ?? ""}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  xHandle: event.target.value.replace(/^@/, ""),
+                  xVerified: false,
+                })
+              }
+              placeholder="username"
             />
           </label>
         </div>
@@ -5025,11 +5291,15 @@ function ProfilePanel({
       </div>
       <aside className="support-panel profile-card-preview">
         <div className="avatar-preview">
-          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <User size={34} />}
+          {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
         </div>
-        <strong>{profile.displayName}</strong>
-        <span>@{profile.handle}</span>
-        <p>{profile.bio}</p>
+        <strong>{draft.displayName}</strong>
+        <span>@{draft.handle}</span>
+        <p>{draft.bio}</p>
+        <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
+          <span>{draft.xHandle ? `@${draft.xHandle}` : "X not linked"}</span>
+          <strong>{draft.xVerified ? "X verified" : "X unverified"}</strong>
+        </div>
         <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
         <DetailItem label="Registered media" value={`${mediaCount}`} />
         <DetailItem
@@ -5260,8 +5530,15 @@ function CreatorDiscoveryPanel({
     "idle" | "checking" | "ready" | "empty" | "error"
   >(submittedCreator ? "checking" : "idle");
   const [message, setMessage] = React.useState("");
+  const [knownCreators, setKnownCreators] = React.useState<KnownCreator[]>(() =>
+    readJson<KnownCreator[]>(KNOWN_CREATORS_KEY, []),
+  );
 
   const normalizedCreator = submittedCreator.trim();
+  const knownForNetwork = React.useMemo(
+    () => knownCreators.filter((item) => item.network === selectedNetwork),
+    [knownCreators, selectedNetwork],
+  );
   const isOwnCreator =
     Boolean(accountAddress && normalizedCreator) &&
     accountAddress.toLowerCase() === normalizedCreator.toLowerCase();
@@ -5308,6 +5585,30 @@ function CreatorDiscoveryPanel({
         ).filter((item): item is MediaMetadata => Boolean(item));
 
         setItems(recovered);
+        const creatorRecord: KnownCreator = {
+          owner: normalizedCreator,
+          network: selectedNetwork,
+          displayName:
+            chainProfile?.displayName || shortenAddress(normalizedCreator),
+          handle: chainProfile?.handle || shortenAddress(normalizedCreator),
+          avatarUrl: chainProfile?.avatarUrl || "",
+          mediaCount: recovered.length,
+          savedAt: Date.now(),
+        };
+        setKnownCreators((current) => {
+          const next = [
+            creatorRecord,
+            ...current.filter(
+              (item) =>
+                !(
+                  item.owner.toLowerCase() === normalizedCreator.toLowerCase() &&
+                  item.network === selectedNetwork
+                ),
+            ),
+          ].slice(0, 18);
+          writeJson(KNOWN_CREATORS_KEY, next);
+          return next;
+        });
         setLoadState(recovered.length > 0 ? "ready" : "empty");
       })
       .catch(() => {
@@ -5335,10 +5636,11 @@ function CreatorDiscoveryPanel({
         <div className="panel-header hero-panel-header">
           <div>
             <p className="muted">Buyer discovery</p>
-            <h2>Browse a creator vault</h2>
+            <h2>Discover creators</h2>
             <span>
-              Enter a creator wallet to read public Payby listings from the
-              marketplace contract, then open media pages to unlock or purchase.
+              Browse public creator vaults by wallet address. Your own Vault
+              stays private to the connected wallet, while Discover lets buyers
+              explore another creator and purchase from their media pages.
             </span>
           </div>
           <Search size={24} />
@@ -5363,6 +5665,61 @@ function CreatorDiscoveryPanel({
         </div>
 
         {message ? <p className="inline-status">{message}</p> : null}
+
+        <section className="discovery-feed" aria-label="Discovery feed">
+          <div className="transaction-history-head">
+            <span>Discovery feed</span>
+            <strong>{knownForNetwork.length ? "Recent creators" : "Start browsing"}</strong>
+          </div>
+          {knownForNetwork.length > 0 ? (
+            <div className="discovery-feed-grid">
+              {knownForNetwork.map((creator) => (
+                <article key={`${creator.network}-${creator.owner}`} className="creator-feed-card">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatorAddress(creator.owner);
+                      setSubmittedCreator(creator.owner);
+                      localStorage.setItem(DISCOVERY_CREATOR_KEY, creator.owner);
+                    }}
+                  >
+                    <span className="avatar-preview">
+                      {creator.avatarUrl ? (
+                        <img src={creator.avatarUrl} alt="" />
+                      ) : (
+                        <User size={20} />
+                      )}
+                    </span>
+                    <span>
+                      <strong>{creator.displayName}</strong>
+                      <small>@{creator.handle}</small>
+                    </span>
+                    <em>{creator.mediaCount} media</em>
+                  </button>
+                  <button
+                    className="button button-secondary compact-button"
+                    type="button"
+                    onClick={() => onNavigate({ name: "creator", owner: creator.owner })}
+                  >
+                    Public page
+                    <ExternalLink size={15} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="discovery-empty-card">
+              <Sparkles size={20} />
+              <div>
+                <strong>Paste a creator wallet to build your feed</strong>
+                <p>
+                  Payby remembers creators you open on this route, so buyers can
+                  return to active vaults without mixing them into their own Vault.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
 
         {normalizedCreator ? (
           <div className="library-source-banner">
