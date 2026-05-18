@@ -2888,6 +2888,7 @@ a {
 
 .vault-publish-button {
   min-width: 158px;
+  gap: 9px;
   border-color: color-mix(in oklch, var(--brand-gold) 62%, var(--brand-bronze));
   background:
     linear-gradient(180deg, oklch(0.84 0.075 86 / 0.96), oklch(0.67 0.075 78 / 0.96));
@@ -2902,10 +2903,19 @@ a {
 }
 
 .vault-publish-button svg {
-  width: 16px;
-  height: 16px;
-  color: oklch(0.37 0.07 76);
+  width: 22px;
+  height: 22px;
+  border: 1px solid oklch(0.23 0.04 72 / 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, oklch(0.26 0.035 72 / 0.92), oklch(0.18 0.03 72 / 0.92));
+  color: oklch(0.86 0.066 86);
   opacity: 1;
+  padding: 4px;
+  stroke-width: 2.4;
+  box-shadow:
+    inset 0 1px 0 oklch(0.92 0.035 88 / 0.14),
+    0 1px 0 oklch(0.95 0.035 88 / 0.18);
 }
 
 .vault-publish-button:hover {
