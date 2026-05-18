@@ -20,11 +20,11 @@
 </p>
 
 <p align="center">
-  <img src="assets/readme/shelby.svg" width="32" alt="Shelby" />
+  <img src="assets/readme/shelby.jpg" width="36" alt="Shelby" />
   &nbsp;
   <strong>Shelby media storage</strong>
   &nbsp;&nbsp;&nbsp;
-  <img src="assets/readme/aptos.svg" width="32" alt="Aptos" />
+  <img src="assets/readme/aptos.svg" width="36" alt="Aptos" />
   &nbsp;
   <strong>Aptos wallet registry</strong>
 </p>
@@ -268,7 +268,7 @@ scripts/
 assets/readme/
   payby-landing-page.png  README landing page screenshot
   aptos.svg               Aptos README icon
-  shelby.svg              Shelby README icon
+  shelby.jpg              Shelby README icon
 
 public/
   payby-icon.svg          browser and app icon
