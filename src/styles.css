@@ -684,21 +684,23 @@ a {
 .landing-links {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-height: 42px;
-  border: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
+  gap: 2px;
+  min-height: 40px;
+  border: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
   border-radius: 999px;
   background:
-    linear-gradient(180deg, color-mix(in oklch, var(--text) 4%, transparent), transparent 64%),
-    color-mix(in oklch, var(--surface) 48%, transparent);
-  padding: 4px;
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 5%, transparent), transparent 68%),
+    color-mix(in oklch, var(--surface) 62%, transparent);
+  padding: 3px;
   color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 800;
+  font-size: 0.82rem;
+  font-weight: 850;
   line-height: 1;
+  letter-spacing: 0.01em;
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--text) 8%, transparent),
-    0 14px 34px oklch(0.08 0.025 245 / 0.12);
+    inset 0 -1px 0 color-mix(in oklch, var(--bg) 42%, transparent),
+    0 16px 40px color-mix(in oklch, var(--bg) 34%, transparent);
 }
 
 .landing-links a {
@@ -706,17 +708,48 @@ a {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0 13px;
+  padding: 0 15px;
+  color: color-mix(in oklch, var(--text) 68%, var(--muted));
+  text-decoration: none;
   transition:
     color 180ms var(--ease-out-quint),
     background 180ms var(--ease-out-quint),
+    box-shadow 180ms var(--ease-out-quint),
     transform 180ms var(--ease-out-quint);
 }
 
 .landing-links a:hover {
   color: var(--text);
-  background: color-mix(in oklch, var(--text) 8%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 9%, transparent), transparent),
+    color-mix(in oklch, var(--brand-gold) 9%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--text) 10%, transparent),
+    0 8px 18px color-mix(in oklch, var(--brand-gold) 10%, transparent);
   transform: translateY(-1px);
+}
+
+:root[data-theme="light"] .landing-links {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, white 48%, transparent), transparent 70%),
+    color-mix(in oklch, var(--bg-elevated) 88%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 74%, transparent),
+    0 14px 32px color-mix(in oklch, var(--brand-bronze) 10%, transparent);
+}
+
+:root[data-theme="light"] .landing-links a {
+  color: color-mix(in oklch, var(--text) 66%, var(--muted));
+}
+
+:root[data-theme="light"] .landing-links a:hover {
+  color: var(--text);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, white 72%, transparent), transparent),
+    color-mix(in oklch, var(--brand-gold) 16%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 80%, transparent),
+    0 10px 22px color-mix(in oklch, var(--brand-bronze) 12%, transparent);
 }
 
 .nav-actions,

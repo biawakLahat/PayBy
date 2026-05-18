@@ -1997,9 +1997,9 @@ function LandingPage({
           <PaybyLogo />
         </button>
         <nav className="landing-links" aria-label="Landing sections">
-          <a href="#protocol">Flow</a>
-          <a href="#creator-os">Creator tools</a>
-          <a href="#networks">Networks</a>
+          <a href="#protocol">Publish</a>
+          <a href="#creator-os">Vault</a>
+          <a href="#networks">Routes</a>
         </nav>
         <div className="nav-actions">
           <ThemeToggle theme={theme} setTheme={setTheme} />
