@@ -4055,34 +4055,43 @@ function VaultList({
     <section className="panel vault-panel" id="vault">
       <div className="panel-header hero-panel-header">
         <div>
-          <p className="muted">Account media</p>
+          <p className="muted">Creator vault</p>
           <h2>Vault library</h2>
           <span>
-            Search, inspect, and download Shelby blobs registered to the
-            connected wallet.
+            Manage Shelby media, chain records, share links, and buyer-facing
+            access from the connected creator wallet.
           </span>
         </div>
-        <Database size={24} />
+        <div className="vault-header-actions">
+          <button className="button button-primary compact-button" type="button" onClick={() => onNavigate({ name: "publish" })}>
+            <UploadCloud size={16} />
+            Publish media
+          </button>
+          <Database size={24} />
+        </div>
       </div>
 
       <div className="vault-metrics">
-        <div>
-          <span>Blobs</span>
+        <div className="vault-metric-card is-primary">
+          <FileArchive size={18} />
+          <span>Media</span>
           <strong>{blobs.length}</strong>
+          <small>Stored to Shelby</small>
         </div>
-        <div>
+        <div className="vault-metric-card">
+          <Database size={18} />
           <span>Stored size</span>
           <strong>{fileSize(totalBytes)}</strong>
+          <small>Total route usage</small>
         </div>
-        <div>
+        <div className="vault-metric-card">
+          <NetworkRouteMark />
           <span>Route</span>
           <strong>{network.label}</strong>
+          <small>Active storage path</small>
         </div>
-        <div>
-          <span>Pending</span>
-          <strong>{activePendingCount}</strong>
-        </div>
-        <div>
+        <div className="vault-metric-card">
+          <ShieldCheck size={18} />
           <span>Chain index</span>
           <strong>
             {chainIndexState === "checking"
@@ -4095,78 +4104,99 @@ function VaultList({
                     ? "Retry"
                     : "Ready"}
           </strong>
+          <small>Marketplace records</small>
         </div>
-        <div>
+        <div className="vault-metric-card">
+          <Clock size={18} />
           <span>Expiring</span>
           <strong>{expiringSoonCount}</strong>
+          <small>Need renewal soon</small>
         </div>
-        <div>
+        <div className="vault-metric-card">
+          <ListChecks size={18} />
+          <span>Pending</span>
+          <strong>{activePendingCount}</strong>
+          <small>Waiting for sync</small>
+        </div>
+        <div className="vault-metric-card">
+          <CreditCard size={18} />
           <span>Sales</span>
           <strong>{salesSummary.saleCount}</strong>
+          <small>On-chain unlocks</small>
         </div>
-        <div>
+        <div className="vault-metric-card">
+          <Wallet size={18} />
           <span>Revenue</span>
           <strong>{formatAssetUnits(salesSummary.revenue)}</strong>
+          <small>Creator proceeds</small>
         </div>
       </div>
 
-      <label className="search-box">
-        <Search size={17} />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search blobs"
-        />
-      </label>
-
-      <div className="library-source-banner">
-        <ShieldCheck size={18} />
-        <div>
-          <strong>
-            {chainIndexState === "checking"
-              ? "Rebuilding creator index from Aptos"
-              : chainIndexState === "synced"
-                ? "Creator registry synced"
-                : chainIndexState === "unavailable"
-                  ? "Marketplace registry needs setup"
-                  : chainIndexState === "error"
-                    ? "Creator registry needs refresh"
-                    : "Creator registry ready"}
-          </strong>
-          <p>
-            Payby keeps Shelby blobs as media storage and uses the marketplace
-            registry to recover missing titles, access policies, and public
-            routes for this creator wallet.
-          </p>
+      <div className="vault-toolbar">
+        <label className="search-box">
+          <Search size={17} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by title or blob name"
+          />
+        </label>
+        <div className="vault-toolbar-meta">
+          <span>{blobs.length} shown</span>
+          <strong>{shortenAddress(accountAddress)}</strong>
         </div>
-        <button
-          className="button button-secondary compact-button"
-          type="button"
-          disabled={chainIndexState === "checking" || !accountAddress}
-          onClick={syncCreatorChainListings}
-        >
-          Refresh registry
-          <ShieldCheck size={15} />
-        </button>
       </div>
 
-      <div className="library-source-banner creator-insight-banner">
-        <CreditCard size={18} />
-        <div>
-          <strong>
-            {salesSummary.saleCount > 0
-              ? `${salesSummary.saleCount} on-chain ${salesSummary.saleCount === 1 ? "sale" : "sales"} recorded`
-              : "No on-chain sales yet"}
-          </strong>
-          <p>
-            Creator revenue is read from the Payby marketplace contract. Paid
-            unlocks transfer the configured asset to the creator and update this
-            summary after finality.
-          </p>
+      <div className="vault-proof-strip">
+        <div className="library-source-banner">
+          <ShieldCheck size={18} />
+          <div>
+            <strong>
+              {chainIndexState === "checking"
+                ? "Rebuilding creator index from Aptos"
+                : chainIndexState === "synced"
+                  ? "Creator registry synced"
+                  : chainIndexState === "unavailable"
+                    ? "Marketplace registry needs setup"
+                    : chainIndexState === "error"
+                      ? "Creator registry needs refresh"
+                      : "Creator registry ready"}
+            </strong>
+            <p>
+              Payby keeps Shelby blobs as media storage and uses the marketplace
+              registry to recover missing titles, access policies, and public
+              routes for this creator wallet.
+            </p>
+          </div>
+          <button
+            className="button button-secondary compact-button"
+            type="button"
+            disabled={chainIndexState === "checking" || !accountAddress}
+            onClick={syncCreatorChainListings}
+          >
+            Refresh registry
+            <ShieldCheck size={15} />
+          </button>
         </div>
-        <span className="creator-revenue-pill">
-          {formatAssetUnits(salesSummary.revenue)}
-        </span>
+
+        <div className="library-source-banner creator-insight-banner">
+          <CreditCard size={18} />
+          <div>
+            <strong>
+              {salesSummary.saleCount > 0
+                ? `${salesSummary.saleCount} on-chain ${salesSummary.saleCount === 1 ? "sale" : "sales"} recorded`
+                : "No on-chain sales yet"}
+            </strong>
+            <p>
+              Creator revenue is read from the Payby marketplace contract. Paid
+              unlocks transfer the configured asset to the creator and update this
+              summary after finality.
+            </p>
+          </div>
+          <span className="creator-revenue-pill">
+            {formatAssetUnits(salesSummary.revenue)}
+          </span>
+        </div>
       </div>
 
       {(actionMessage || (!walletNetworkAligned && accountAddress)) && (
@@ -4217,75 +4247,85 @@ function VaultList({
                 <div className="blob-icon">
                   <FileArchive size={18} />
                 </div>
-                <div>
-                  <strong>{metadata?.title || name}</strong>
-                  <span>
-                    {fileSize(blob.size)} - Expires {formatMicros(blob.expirationMicros)}
-                  </span>
+                <div className="blob-main">
+                  <div className="blob-title-row">
+                    <strong>{metadata?.title || name}</strong>
+                    {metadata?.accessMode ? (
+                      <span className="blob-access-pill">{accessModeLabel(metadata.accessMode)}</span>
+                    ) : null}
+                  </div>
+                  <span>{name}</span>
+                  <div className="blob-meta-row">
+                    <small>{fileSize(blob.size)}</small>
+                    <small>Expires {formatMicros(blob.expirationMicros)}</small>
+                    {metadata?.category ? <small>{metadata.category}</small> : null}
+                  </div>
                 </div>
                 <span className={`expiry-pill ${expiryState.className}`}>
                   {expiryState.label}
                 </span>
-                <button
-                  className="button button-ghost compact-button"
-                  type="button"
-                  onClick={() =>
-                    onNavigate({
-                      name: "detail",
-                      owner: accountAddress,
-                      blobName: name,
-                    })
-                  }
-                >
-                  Detail
-                </button>
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label={`Share ${name}`}
-                  title={`Share ${name}`}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(getShareUrl(accountAddress, name));
-                    addActivity({
-                      type: "share",
-                      label: "Copied share link",
-                      detail: name,
-                    });
-                  }}
-                >
-                  <Share2 size={17} />
-                </button>
-                <a className="icon-button" href={url} target="_blank" rel="noreferrer">
-                  <Download size={17} />
-                </a>
-                <button
-                  className="icon-button danger-button"
-                  type="button"
-                  aria-label={`Delete ${name}`}
-                  title={`Delete ${name}`}
-                  disabled={!account || deleteBlobs.isPending}
-                  onClick={async () => {
-                    if (!account) return;
-                    if (!walletNetworkAligned) {
-                      await requestWalletNetworkChange({
-                        changeNetwork,
-                        network: walletNetwork,
-                        selectedNetwork,
-                        setStatusMessage: setActionMessage,
-                      });
-                      return;
+                <div className="blob-actions">
+                  <button
+                    className="button button-ghost compact-button"
+                    type="button"
+                    onClick={() =>
+                      onNavigate({
+                        name: "detail",
+                        owner: accountAddress,
+                        blobName: name,
+                      })
                     }
-                    deleteBlobs.mutate({
-                      signer: {
-                        account: { address: account.address },
-                        signAndSubmitTransaction,
-                      },
-                      blobNames: [name],
-                    });
-                  }}
-                >
-                  <Trash2 size={17} />
-                </button>
+                  >
+                    Detail
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label={`Share ${name}`}
+                    title={`Share ${name}`}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(getShareUrl(accountAddress, name));
+                      addActivity({
+                        type: "share",
+                        label: "Copied share link",
+                        detail: name,
+                      });
+                    }}
+                  >
+                    <Share2 size={17} />
+                  </button>
+                  <a className="icon-button" href={url} target="_blank" rel="noreferrer">
+                    <Download size={17} />
+                  </a>
+                  <button
+                    className="icon-button danger-button"
+                    type="button"
+                    aria-label={`Delete ${name}`}
+                    title={`Delete ${name}`}
+                    disabled={!account || deleteBlobs.isPending}
+                    onClick={async () => {
+                      if (!account) return;
+                      if (!walletNetworkAligned) {
+                        await requestWalletNetworkChange({
+                          changeNetwork,
+                          network: walletNetwork,
+                          selectedNetwork,
+                          setStatusMessage: setActionMessage,
+                        });
+                        return;
+                      }
+                      deleteBlobs.mutate({
+                        signer: {
+                          account: { address: account.address },
+                          signAndSubmitTransaction,
+                        },
+                        blobNames: [name],
+                      });
+                    }}
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
               </li>
             );
           })}

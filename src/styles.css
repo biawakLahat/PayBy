@@ -2856,6 +2856,30 @@ a {
   min-height: calc(100vh - 230px);
 }
 
+.vault-panel {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.vault-panel .hero-panel-header {
+  margin-bottom: 0;
+}
+
+.vault-panel .hero-panel-header > div:first-child span {
+  max-width: 72ch;
+}
+
+.vault-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.vault-header-actions > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
 .workspace-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -3536,7 +3560,85 @@ a {
 }
 
 .blob-list li {
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  min-height: 88px;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.blob-main {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.blob-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.blob-title-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blob-main > span {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in oklch, var(--muted) 86%, var(--text));
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 760;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blob-access-pill {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in oklch, var(--accent) 24%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  color: color-mix(in oklch, var(--text) 78%, var(--accent));
+  padding: 5px 8px;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.blob-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.blob-meta-row small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid color-mix(in oklch, var(--line) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface-strong) 54%, transparent);
+  color: var(--muted);
+  padding: 0 9px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.blob-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
 }
 
 .expiry-pill {
@@ -3845,9 +3947,8 @@ a {
 
 .vault-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-md);
-  margin-bottom: var(--space-lg);
 }
 
 .vault-metrics div,
@@ -3877,23 +3978,134 @@ a {
 }
 
 .vault-metrics div {
+  min-width: 0;
+  min-height: 132px;
   display: grid;
-  gap: var(--space-xs);
+  align-content: space-between;
+  gap: 7px;
   padding: var(--space-lg);
+}
+
+.vault-metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.vault-metric-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 14px 12px auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  filter: blur(18px);
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.vault-metric-card > svg,
+.vault-metric-card .logo-route {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.vault-metric-card.is-primary {
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 10%, transparent), transparent 52%),
+    color-mix(in oklch, var(--surface-strong) 66%, transparent);
 }
 
 .vault-metrics span,
 .network-mini-card span,
 .network-overview span {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: var(--tracking-label);
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 .vault-metrics strong {
+  min-width: 0;
   overflow: hidden;
+  color: var(--text);
+  font-size: 1.12rem;
+  font-weight: 950;
+  line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.vault-metrics small {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in oklch, var(--muted) 88%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  border: 1px solid color-mix(in oklch, var(--line) 62%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 3%, transparent), transparent 64%),
+    color-mix(in oklch, var(--surface-strong) 58%, transparent);
+  padding: var(--space-sm);
+  box-shadow: var(--shadow-inset);
+}
+
+.vault-toolbar .search-box {
+  margin: 0;
+  border-color: transparent;
+  background: color-mix(in oklch, var(--surface) 58%, transparent);
+  box-shadow: none;
+}
+
+.vault-toolbar-meta {
+  min-height: 44px;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 3px;
+  padding: 0 var(--space-sm);
+  white-space: nowrap;
+}
+
+.vault-toolbar-meta span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: var(--tracking-label);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.vault-toolbar-meta strong {
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.vault-proof-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+  gap: var(--space-md);
+}
+
+.vault-proof-strip .library-source-banner {
+  margin: 0;
 }
 
 .support-panel {
@@ -6541,6 +6753,7 @@ a {
   .endpoint-grid,
   .network-route-card,
   .network-status-bar,
+  .vault-proof-strip,
   .workspace-layout,
   .detail-layout,
   .profile-layout,
@@ -6658,6 +6871,7 @@ a {
   .buyer-library-summary,
   .file-review,
   .vault-metrics,
+  .vault-toolbar,
   .public-access-bar,
   .receipt-grid,
   .metadata-form,
@@ -6671,11 +6885,35 @@ a {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .blob-list li .compact-button,
-  .blob-list li .icon-button,
-  .blob-list li .expiry-pill {
+  .blob-list li .expiry-pill,
+  .blob-actions {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .blob-actions {
+    display: grid;
+    grid-template-columns: 1fr repeat(3, 44px);
+  }
+
+  .blob-actions .compact-button,
+  .blob-actions .icon-button {
+    width: 100%;
+  }
+
+  .vault-header-actions,
+  .vault-toolbar-meta {
+    width: 100%;
+    justify-content: space-between;
+    justify-items: start;
+  }
+
+  .vault-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .vault-toolbar-meta {
+    padding: var(--space-xs);
   }
 
   .funding-helper {
