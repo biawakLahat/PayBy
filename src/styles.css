@@ -2887,43 +2887,36 @@ a {
 }
 
 .vault-publish-button {
-  position: relative;
-  overflow: hidden;
   min-width: 158px;
-  border-color: color-mix(in oklch, var(--brand-gold) 56%, var(--line));
+  border-color: color-mix(in oklch, var(--brand-gold) 62%, var(--brand-bronze));
   background:
-    linear-gradient(180deg, color-mix(in oklch, white 20%, transparent), transparent 62%),
-    color-mix(in oklch, var(--brand-gold) 78%, var(--brand-bronze));
-  color: color-mix(in oklch, var(--text) 84%, black);
+    linear-gradient(180deg, oklch(0.84 0.075 86 / 0.96), oklch(0.67 0.075 78 / 0.96));
+  color: oklch(0.18 0.024 72);
   font-size: 0.84rem;
   font-weight: 950;
-}
-
-.vault-publish-button::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  pointer-events: none;
-  border-radius: inherit;
-  background: linear-gradient(110deg, transparent 8%, color-mix(in oklch, white 20%, transparent) 44%, transparent 68%);
-  opacity: 0.28;
+  text-shadow: 0 1px 0 oklch(0.92 0.035 88 / 0.34);
+  box-shadow:
+    inset 0 1px 0 oklch(0.95 0.035 88 / 0.42),
+    inset 0 -1px 0 oklch(0.36 0.055 72 / 0.16),
+    0 14px 26px color-mix(in oklch, var(--brand-gold) 16%, transparent);
 }
 
 .vault-publish-button svg {
-  position: relative;
-  z-index: 1;
   width: 16px;
   height: 16px;
-  color: color-mix(in oklch, var(--brand-bronze) 74%, black);
-  opacity: 0.86;
+  color: oklch(0.37 0.07 76);
+  opacity: 1;
 }
 
 .vault-publish-button:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklch, var(--brand-gold) 72%, var(--line));
+  border-color: color-mix(in oklch, var(--brand-gold) 78%, var(--brand-bronze));
+  background:
+    linear-gradient(180deg, oklch(0.87 0.078 86 / 0.98), oklch(0.7 0.078 78 / 0.98));
   box-shadow:
-    inset 0 1px 0 color-mix(in oklch, white 28%, transparent),
-    0 16px 34px color-mix(in oklch, var(--brand-gold) 18%, transparent);
+    inset 0 1px 0 oklch(0.98 0.032 88 / 0.48),
+    inset 0 -1px 0 oklch(0.36 0.055 72 / 0.18),
+    0 16px 32px color-mix(in oklch, var(--brand-gold) 18%, transparent);
 }
 
 .workspace-layout {
