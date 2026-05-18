@@ -24,7 +24,7 @@
   &nbsp;
   <strong>Shelby media storage</strong>
   &nbsp;&nbsp;&nbsp;
-  <img src="assets/readme/aptos.svg" width="36" alt="Aptos" />
+  <img src="assets/readme/aptos.png" width="36" alt="Aptos" />
   &nbsp;
   <strong>Aptos wallet registry</strong>
 </p>
@@ -267,7 +267,7 @@ scripts/
 
 assets/readme/
   payby-landing-page.png  README landing page screenshot
-  aptos.svg               Aptos README icon
+  aptos.png               Aptos README icon
   shelby.jpg              Shelby README icon
 
 public/
