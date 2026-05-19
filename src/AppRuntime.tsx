@@ -18,6 +18,7 @@ import {
   KeyRound,
   Link2,
   ListChecks,
+  Loader2,
   Lock,
   Moon,
   Pencil,
@@ -2299,6 +2300,7 @@ function VaultApp({
     profile: "Public identity",
     activity: "On-chain and local actions",
   }[currentView];
+  const routeTransitionKey = `${route.name}-${route.owner ?? ""}-${route.blobName ?? ""}`;
 
   return (
     <main className="app-shell">
@@ -2385,8 +2387,8 @@ function VaultApp({
       </aside>
 
       <section className="workspace">
-        <header className="topbar">
-          <div>
+        <header className="topbar" key={`topbar-${routeTransitionKey}`}>
+          <div className="route-title-block">
             <p className="muted">{viewLabel}</p>
             <h1>{viewTitle}</h1>
           </div>
@@ -2446,7 +2448,11 @@ function VaultApp({
           </div>
         </section>
 
-        <section className="workspace-page" aria-live="polite">
+        <section
+          className="workspace-page"
+          key={routeTransitionKey}
+          aria-live="polite"
+        >
           {currentView === "vault" ? (
             <VaultList
               accountAddress={accountAddress}
@@ -3658,12 +3664,28 @@ function UploadPanel({
         </div>
 
         <button
-          className="button button-primary publish-button"
+          className={`button button-primary publish-button ${
+            uploadBlobs.isPending ||
+            publishPhase === "wallet" ||
+            publishPhase === "confirming" ||
+            publishPhase === "storing" ||
+            publishPhase === "registry"
+              ? "is-busy"
+              : ""
+          }`}
           type="button"
           disabled={registryRetryItems.length > 0 ? false : !canUpload}
           onClick={registryRetryItems.length > 0 ? handleRetryRegistry : handleUpload}
         >
-          <PlugZap size={18} />
+          {uploadBlobs.isPending ||
+          publishPhase === "wallet" ||
+          publishPhase === "confirming" ||
+          publishPhase === "storing" ||
+          publishPhase === "registry" ? (
+            <Loader2 className="button-spinner" size={18} />
+          ) : (
+            <PlugZap size={18} />
+          )}
           {registryRetryItems.length > 0
             ? "Retry access registry"
             : uploadBlobs.isPending
@@ -4542,13 +4564,22 @@ function EmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const isLoading = /^Loading/i.test(title);
+
   return (
-    <div className="empty-state">
+    <div className={`empty-state ${isLoading ? "is-loading" : ""}`}>
       <span className="empty-icon">
-        <FileArchive size={30} />
+        {isLoading ? <Loader2 size={30} /> : <FileArchive size={30} />}
       </span>
       <strong>{title}</strong>
       <p>{body}</p>
+      {isLoading ? (
+        <div className="skeleton-stack" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      ) : null}
       {actionLabel && onAction ? (
         <button className="button button-secondary compact-button" type="button" onClick={onAction}>
           {actionLabel}
@@ -5524,12 +5555,12 @@ function ProfilePanel({
           </div>
           <div className="profile-form-actions">
             <button
-              className="button button-primary publish-button"
+              className={`button button-primary publish-button ${profileSaving ? "is-busy" : ""}`}
               type="button"
               disabled={profileSaving}
               onClick={saveProfileOnChain}
             >
-              <Check size={17} />
+              {profileSaving ? <Loader2 className="button-spinner" size={17} /> : <Check size={17} />}
               {profileSaving ? "Committing profile..." : "Save profile"}
             </button>
             {hasProfileIdentity ? (

@@ -58,6 +58,7 @@
   --duration-fast: 160ms;
   --duration-med: 240ms;
   --duration-slow: 420ms;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -152,6 +153,11 @@ input,
 textarea,
 select {
   caret-color: var(--accent);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-quint),
+    background var(--duration-fast) var(--ease-out-quint),
+    box-shadow var(--duration-fast) var(--ease-out-quint),
+    color var(--duration-fast) var(--ease-out-quint);
 }
 
 input::placeholder,
@@ -339,6 +345,42 @@ a {
   letter-spacing: 0;
   white-space: nowrap;
   box-shadow: var(--control-shadow);
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    color-mix(in oklch, var(--text) 10%, transparent) 36%,
+    transparent 62%
+  );
+  opacity: 0;
+  transform: translateX(-42%);
+  transition:
+    opacity var(--duration-fast) var(--ease-out-quint),
+    transform var(--duration-med) var(--ease-out-quint);
+}
+
+.button:hover::after,
+.button.is-busy::after {
+  opacity: 0.72;
+  transform: translateX(42%);
+}
+
+.button.is-busy {
+  cursor: progress;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--text) 14%, transparent),
+    0 18px 46px color-mix(in oklch, var(--accent) 18%, transparent);
+}
+
+.button-spinner {
+  animation: runtime-spin 850ms linear infinite;
 }
 
 .button-primary {
@@ -771,6 +813,7 @@ a {
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--text) 7%, transparent),
     0 16px 44px oklch(0.08 0.025 245 / 0.13);
+  animation: reveal-up 360ms 80ms var(--ease-out-expo) both;
 }
 
 :root[data-theme="light"] .topbar-actions {
@@ -989,10 +1032,11 @@ a {
   transform-style: preserve-3d;
   contain: layout paint;
   transition: transform 900ms var(--ease-out-expo);
+  will-change: transform;
 }
 
 .hero-visual:hover .vault-scene {
-  transform: rotateX(1deg) rotateY(-2deg) translateY(-3px);
+  transform: rotateX(1.4deg) rotateY(-3.2deg) translate3d(0, -5px, 0);
 }
 
 .vault-scene::before,
@@ -2301,6 +2345,21 @@ a {
   box-shadow: none;
 }
 
+.side-link::after {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transform: scaleY(0.35);
+  transform-origin: center;
+  transition:
+    opacity var(--duration-med) var(--ease-out-quint),
+    transform var(--duration-med) var(--ease-out-quint);
+}
+
 .side-link:hover {
   color: var(--text);
   background: color-mix(in oklch, var(--surface) 48%, transparent);
@@ -2317,7 +2376,7 @@ a {
 .side-link:hover svg,
 .side-link.is-active svg {
   color: var(--accent);
-  transform: translateY(-1px);
+  transform: translate3d(2px, -1px, 0);
 }
 
 .side-link.is-active {
@@ -2329,6 +2388,11 @@ a {
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--text) 10%, transparent),
     0 10px 28px color-mix(in oklch, var(--accent) 8%, transparent);
+}
+
+.side-link.is-active::after {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .sidebar-note {
@@ -2386,6 +2450,10 @@ a {
   font-weight: 900;
   line-height: 0.98;
   text-wrap: balance;
+}
+
+.route-title-block {
+  animation: route-title-in 340ms var(--ease-out-expo) both;
 }
 
 .select-shell {
@@ -2866,6 +2934,19 @@ a {
     transform var(--duration-med) var(--ease-out-quint),
     border-color var(--duration-med) var(--ease-out-quint),
     box-shadow var(--duration-med) var(--ease-out-quint);
+  animation: reveal-up 380ms var(--ease-out-expo) both;
+}
+
+.status-tile:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.status-tile:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.status-tile:nth-child(4) {
+  animation-delay: 135ms;
 }
 
 .status-tile:hover {
@@ -2935,6 +3016,7 @@ a {
   box-shadow:
     var(--shadow-inset),
     0 14px 36px oklch(0.08 0.025 245 / 0.07);
+  animation: reveal-up 380ms 110ms var(--ease-out-expo) both;
 }
 
 :root[data-theme="light"] .workspace-intel {
@@ -2992,11 +3074,56 @@ a {
 .workspace-page {
   display: grid;
   align-items: start;
-  animation: page-in 260ms var(--ease-out-quint) both;
+  animation: page-in 340ms var(--ease-out-expo) both;
+  contain: layout paint;
 }
 
 .workspace-page > .panel {
   min-height: calc(100vh - 230px);
+}
+
+.workspace-page > .panel,
+.workspace-page > .workspace-layout,
+.workspace-page > .detail-layout,
+.workspace-page > .profile-layout,
+.workspace-page > .discover-layout {
+  transform-origin: 50% 0;
+}
+
+.workspace-page .panel-header,
+.workspace-page .vault-metric-card,
+.workspace-page .network-mini-card,
+.workspace-page .feature-card,
+.workspace-page .endpoint,
+.workspace-page .payment-asset-card,
+.workspace-page .media-lifecycle-card,
+.workspace-page .profile-card-preview,
+.workspace-page .library-source-banner,
+.workspace-page .publish-progress,
+.workspace-page .publish-alert,
+.workspace-page .empty-state {
+  animation: reveal-up 420ms var(--ease-out-expo) both;
+}
+
+.workspace-page .vault-metric-card:nth-child(2),
+.workspace-page .network-mini-card:nth-child(2),
+.workspace-page .endpoint:nth-child(2),
+.workspace-page .payment-asset-card:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.workspace-page .vault-metric-card:nth-child(3),
+.workspace-page .network-mini-card:nth-child(3),
+.workspace-page .endpoint:nth-child(3),
+.workspace-page .payment-asset-card:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.workspace-page .vault-metric-card:nth-child(4),
+.workspace-page .network-mini-card:nth-child(4),
+.workspace-page .endpoint:nth-child(4),
+.workspace-page .payment-asset-card:nth-child(4) {
+  animation-delay: 135ms;
 }
 
 .vault-panel {
@@ -3082,6 +3209,8 @@ a {
 .panel {
   position: relative;
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   background:
@@ -3316,6 +3445,43 @@ a {
     border-color 180ms var(--ease-out-quint),
     background 180ms var(--ease-out-quint),
     box-shadow 180ms var(--ease-out-quint);
+  animation: list-item-in 340ms var(--ease-out-expo) both;
+}
+
+.file-list li:nth-child(2),
+.blob-list li:nth-child(2),
+.pending-publish-item:nth-child(2),
+.transaction-history li:nth-child(2),
+.buyer-library-list li:nth-child(2),
+.activity-list li:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.file-list li:nth-child(3),
+.blob-list li:nth-child(3),
+.pending-publish-item:nth-child(3),
+.transaction-history li:nth-child(3),
+.buyer-library-list li:nth-child(3),
+.activity-list li:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.file-list li:nth-child(4),
+.blob-list li:nth-child(4),
+.pending-publish-item:nth-child(4),
+.transaction-history li:nth-child(4),
+.buyer-library-list li:nth-child(4),
+.activity-list li:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.file-list li:nth-child(n + 5),
+.blob-list li:nth-child(n + 5),
+.pending-publish-item:nth-child(n + 5),
+.transaction-history li:nth-child(n + 5),
+.buyer-library-list li:nth-child(n + 5),
+.activity-list li:nth-child(n + 5) {
+  animation-delay: 140ms;
 }
 
 .file-list li:hover,
@@ -3403,13 +3569,31 @@ a {
 }
 
 .publish-progress-track {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-sm);
 }
 
+.publish-progress-track::before {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--accent) 34%, transparent),
+    color-mix(in oklch, var(--cool) 24%, transparent),
+    transparent
+  );
+  opacity: 0.58;
+}
+
 .publish-progress-step {
   min-height: 92px;
+  position: relative;
   display: grid;
   align-content: start;
   gap: 6px;
@@ -3422,7 +3606,25 @@ a {
     opacity 180ms var(--ease-out-quint),
     border-color 180ms var(--ease-out-quint),
     transform 180ms var(--ease-out-quint),
-    background 180ms var(--ease-out-quint);
+    background 180ms var(--ease-out-quint),
+    box-shadow 180ms var(--ease-out-quint);
+  animation: reveal-up 360ms var(--ease-out-expo) both;
+}
+
+.publish-progress-step:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.publish-progress-step:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.publish-progress-step:nth-child(4) {
+  animation-delay: 135ms;
+}
+
+.publish-progress-step:nth-child(5) {
+  animation-delay: 180ms;
 }
 
 .publish-progress-step span {
@@ -3458,7 +3660,9 @@ a {
     color-mix(in oklch, var(--surface-strong) 72%, transparent);
   opacity: 1;
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--text) 7%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--text) 7%, transparent),
+    0 12px 28px color-mix(in oklch, var(--accent) 10%, transparent);
 }
 
 .publish-progress-step.is-active span {
@@ -3483,6 +3687,7 @@ a {
 .publish-progress-step.is-complete span {
   background: color-mix(in oklch, var(--success) 18%, transparent);
   color: var(--success);
+  animation: check-pop 260ms var(--ease-out-expo) both;
 }
 
 .transaction-link {
@@ -3598,6 +3803,7 @@ a {
     border-color var(--duration-fast) var(--ease-out-quint),
     background var(--duration-fast) var(--ease-out-quint),
     box-shadow var(--duration-fast) var(--ease-out-quint);
+  animation: list-item-in 340ms var(--ease-out-expo) both;
 }
 
 .file-list li::before,
@@ -4101,6 +4307,52 @@ a {
   color: var(--accent);
   border: 1px solid color-mix(in oklch, var(--accent) 26%, var(--line));
   box-shadow: 0 12px 28px color-mix(in oklch, var(--accent) 8%, transparent);
+}
+
+.empty-state.is-loading .empty-icon {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--text) 8%, transparent), transparent 58%),
+    color-mix(in oklch, var(--cool) 13%, transparent);
+  color: var(--cool);
+  border-color: color-mix(in oklch, var(--cool) 30%, var(--line));
+}
+
+.empty-state.is-loading .empty-icon svg {
+  animation: runtime-spin 900ms linear infinite;
+}
+
+.skeleton-stack {
+  width: min(100%, 380px);
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.skeleton-stack span {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in oklch, var(--surface-strong) 70%, transparent) 0%,
+      color-mix(in oklch, var(--accent) 13%, var(--surface-strong)) 42%,
+      color-mix(in oklch, var(--surface-strong) 70%, transparent) 74%
+    );
+  background-size: 220% 100%;
+  animation: skeleton-sheen 1.35s var(--ease-out-quart) infinite;
+}
+
+.skeleton-stack span:nth-child(2) {
+  width: 82%;
+  margin-inline: auto;
+  animation-delay: 120ms;
+}
+
+.skeleton-stack span:nth-child(3) {
+  width: 58%;
+  margin-inline: auto;
+  animation-delay: 240ms;
 }
 
 .empty-state .button {
@@ -5342,6 +5594,7 @@ a {
     transform var(--duration-fast) var(--ease-out-quint),
     border-color var(--duration-fast) var(--ease-out-quint),
     box-shadow var(--duration-fast) var(--ease-out-quint);
+  animation: list-item-in 340ms var(--ease-out-expo) both;
 }
 
 .analytics-summary div:hover {
@@ -6074,6 +6327,7 @@ a {
     border-color var(--duration-fast) var(--ease-out-quint),
     background var(--duration-fast) var(--ease-out-quint),
     box-shadow var(--duration-fast) var(--ease-out-quint);
+  animation: list-item-in 340ms var(--ease-out-expo) both;
 }
 
 .activity-list li:hover {
@@ -6733,11 +6987,66 @@ a {
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate3d(0, 14px, 0) scale(0.992);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes route-title-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    scale: 0.992;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes list-item-in {
+  from {
+    opacity: 0;
+    translate: 10px 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes check-pop {
+  0% {
+    transform: scale(0.88);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes skeleton-sheen {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
   }
 }
 
@@ -7018,6 +7327,11 @@ a {
 }
 
 @media (max-width: 760px) {
+  :root {
+    --control-height: 48px;
+    --control-height-lg: 54px;
+  }
+
   .landing-nav {
     height: auto;
     min-height: 68px;
@@ -7309,6 +7623,22 @@ a {
   .workspace,
   .panel {
     padding: var(--space-lg);
+  }
+
+  .workspace {
+    gap: var(--space-lg);
+  }
+
+  .workspace-page {
+    contain: paint;
+  }
+
+  .side-link,
+  .button,
+  .icon-button,
+  .network-trigger,
+  .wallet-pill {
+    min-height: 48px;
   }
 
   .pagination-bar {
