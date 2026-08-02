@@ -1,4 +1,5 @@
 import React from "react";
+import { flushSync } from "react-dom";
 import {
   Activity,
   ArrowRight,
@@ -51,6 +52,8 @@ import {
 import type { BlobMetadata, ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { ShelbyClient as ShelbyBrowserClient } from "@shelby-protocol/sdk/browser";
 import { PaybyLogo } from "./components/PaybyLogo";
+import aptosMark from "../assets/readme/aptos.png";
+import shelbyMark from "../assets/readme/shelby.jpg";
 import {
   PAYBY_NETWORKS,
   defaultNetwork,
@@ -393,8 +396,30 @@ function useRoute(): [AppRoute, (route: AppRoute) => void] {
       activity: "/app/activity",
     };
     const nextPath = paths[nextRoute.name];
-    window.history.pushState({}, "", nextPath);
-    setRoute(nextRoute);
+    const commitNavigation = () => {
+      window.history.pushState({}, "", nextPath);
+      flushSync(() => setRoute(nextRoute));
+      window.scrollTo({ top: 0, behavior: "auto" });
+    };
+    const transitionDocument = document as Document & {
+      startViewTransition?: (callback: () => void) => {
+        finished: Promise<void>;
+      };
+    };
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (transitionDocument.startViewTransition && !reduceMotion) {
+      const transition = transitionDocument.startViewTransition.call(
+        document,
+        commitNavigation,
+      );
+      void transition.finished.catch(() => undefined);
+      return;
+    }
+
+    commitNavigation();
   }, []);
 
   return [route, navigate];
@@ -1994,187 +2019,211 @@ function LandingPage({
   }, []);
 
   return (
-    <main className="landing landing-web3">
+    <main className="landing landing-editorial">
       <header className="landing-nav">
         <button className="brand-mark" onClick={onLaunch} type="button" aria-label="Open Payby app">
           <PaybyLogo />
         </button>
         <nav className="landing-links" aria-label="Landing sections">
-          <a href="#protocol">Publish</a>
-          <a href="#creator-os">Vault</a>
-          <a href="#networks">Routes</a>
+          <a href="#protocol">Workflow</a>
+          <a href="#creator-os">Product</a>
+          <a href="#networks">Infrastructure</a>
         </nav>
         <div className="nav-actions">
           <ThemeToggle theme={theme} setTheme={setTheme} />
           <button className="button button-secondary" onClick={onLaunch}>
-            Launch app
+            <span className="landing-nav-label-full">Enter workspace</span>
+            <span className="landing-nav-label-compact">Open</span>
             <ArrowRight size={17} />
           </button>
         </div>
       </header>
 
-      <section className="hero">
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <span className="hero-pill">
-              <ShieldCheck size={16} />
-              Shelby storage with Aptos access records
-            </span>
-            <h1>Payby</h1>
-            <p>
-              Publish media to Shelby, record listing and access policy on
-              Aptos, then share wallet-aware pages buyers can open from their
-              own account.
-            </p>
-            <div className="hero-actions">
-              <button className="button button-primary button-xl" onClick={onLaunch}>
-                Open workspace
-                <ArrowRight size={19} />
-              </button>
-              <a className="button button-ghost button-xl" href="#protocol">
-                See publish flow
-                <span className="route-action-icon" aria-hidden="true">
-                  <NetworkRouteMark />
-                </span>
-              </a>
-            </div>
-            <div className="trust-row" aria-label="Payby capabilities">
-              <span>
-                <Check size={15} />
-                Shelby storage
-              </span>
-              <span>
-                <Check size={15} />
-                Aptos registry
-              </span>
-              <span>
-                <Check size={15} />
-                Buyer receipts
-              </span>
-            </div>
+      <section className="landing-hero">
+        <div className="landing-hero-copy">
+          <div className="landing-availability">
+            <i aria-hidden="true" />
+            Live on Shelbynet
           </div>
-
-          <div className="hero-visual" aria-hidden="true">
-            <div className="vault-scene">
-              <div className="scene-grid" />
-              <div className="hero-console console-one">
-                <span>STORAGE ROUTE</span>
-                <strong>shelby://creator/media</strong>
-                <i>wallet signature required</i>
-              </div>
-              <div className="media-stack">
-                <span>
-                  <i>FILM</i>
-                  <b>VIDEO</b>
-                </span>
-                <span>
-                  <i>WAV</i>
-                  <b>AUDIO</b>
-                </span>
-                <span>
-                  <i>ZIP</i>
-                  <b>ASSET</b>
-                </span>
-              </div>
-              <div className="data-lane lane-one">
-                <span>creator-film.mov</span>
-                <strong>listing recorded</strong>
-              </div>
-              <div className="data-lane lane-two">
-                <span>vault-audio.wav</span>
-                <strong>Shelby route</strong>
-              </div>
-              <div className="vault-ring ring-one" />
-              <div className="vault-ring ring-two" />
-              <div className="vault-core">
-                <div className="vault-face">
-                  <Database size={34} />
-                  <span>PAYBY</span>
-                </div>
-                <div className="vault-depth" />
-              </div>
-              <div className="chain-node node-one">APT</div>
-              <div className="chain-node node-two">SHELBY</div>
-              <div className="chain-node node-three">MEDIA</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-band protocol-band" id="protocol">
-        <div className="section-heading reveal-on-scroll">
-          <span className="eyebrow">Publishing flow</span>
-          <h2>From private file to buyer-ready media.</h2>
-        </div>
-        <div className="protocol-flow">
-          <article className="reveal-on-scroll">
-            <span>01</span>
-            <h3>Select media</h3>
-            <p>Add video, audio, images, archives, or creator assets to the vault.</p>
-          </article>
-          <article className="reveal-on-scroll">
-            <span>02</span>
-            <h3>Record access</h3>
-            <p>Choose visibility, pricing, and policy before signing with your wallet.</p>
-          </article>
-          <article className="reveal-on-scroll">
-            <span>03</span>
-            <h3>Store on Shelby</h3>
-            <p>Upload the media and keep the listing tied to the creator wallet.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="landing-band" id="creator-os">
-        <div className="section-heading compact-heading reveal-on-scroll">
-          <span className="eyebrow">Creator tools</span>
-          <h2>Publish, price, and prove media from one workspace.</h2>
-        </div>
-        <div className="feature-grid">
-          <article className="feature-card feature-card-large reveal-on-scroll">
-            <span className="feature-kicker">Vault workflow</span>
-            <FileVideo size={24} />
-            <h3>Media library</h3>
-            <p>
-              Stage files, review size and retention, then publish directly to
-              the selected Shelby route.
-            </p>
-          </article>
-          <article className="feature-card reveal-on-scroll">
-            <span className="feature-kicker">Ownership</span>
-            <Wallet size={24} />
-            <h3>Wallet-owned records</h3>
-            <p>
-              Listings, purchases, and creator profile state are scoped to the
-              connected Aptos wallet.
-            </p>
-          </article>
-          <article className="feature-card feature-card-cool reveal-on-scroll">
-            <span className="feature-kicker">Route visibility</span>
-            <Database size={24} />
-            <h3>Inspectable routes</h3>
-            <p>
-              Switch between Shelbynet and Shelby Testnet with RPC, fullnode,
-              indexer, and contract details visible in the app.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="network-showcase reveal-on-scroll" id="networks">
-        <div>
-          <span className="eyebrow">Network routes</span>
-          <h2>Verify the route before every publish.</h2>
-          <p>
-            Payby shows the active Shelby RPC, Aptos fullnode, indexer, and
-            marketplace contract so creators know exactly where media and policy
-            records are being written.
+          <h1>Payby</h1>
+          <p className="landing-hero-lede">
+            Publish creator media to Shelby. Set access on Aptos. Share one
+            link buyers can unlock with their wallet.
           </p>
+          <div className="hero-actions">
+            <button className="button button-primary button-xl" onClick={onLaunch}>
+              Open workspace
+              <ArrowRight size={19} />
+            </button>
+            <a className="landing-text-link" href="#protocol">
+              Review the workflow
+              <ArrowRight size={17} />
+            </a>
+          </div>
         </div>
-        <button className="button button-primary button-xl" onClick={onLaunch}>
-          Open workspace
-          <ArrowRight size={19} />
-        </button>
+
+        <figure
+          className="landing-route-map"
+          aria-label="Creator media stored on Shelby with its access policy recorded on Aptos"
+        >
+          <figcaption className="landing-route-caption">
+            <span>Publishing route</span>
+            <strong>One signature, two network records</strong>
+          </figcaption>
+          <div className="landing-route-line" />
+          <div className="landing-route-node route-file">
+            <span className="landing-route-icon">
+              <FileVideo size={22} />
+            </span>
+            <small>Creator media</small>
+            <strong>creator-cut.mov</strong>
+          </div>
+          <div className="landing-route-node route-shelby">
+            <span className="landing-route-icon is-image">
+              <img src={shelbyMark} alt="" />
+            </span>
+            <small>Stored on</small>
+            <strong>Shelby</strong>
+          </div>
+          <div className="landing-route-node route-aptos">
+            <span className="landing-route-icon is-image">
+              <img src={aptosMark} alt="" />
+            </span>
+            <small>Recorded on</small>
+            <strong>Aptos</strong>
+          </div>
+          <div className="landing-route-proof">
+            <ShieldCheck size={18} />
+            <span>
+              <small>Buyer proof</small>
+              <strong>Wallet access confirmed</strong>
+            </span>
+          </div>
+        </figure>
+
+        <dl className="landing-hero-ledger">
+          <div>
+            <dt>Storage</dt>
+            <dd>Shelby blobs</dd>
+          </div>
+          <div>
+            <dt>Access</dt>
+            <dd>Aptos policy</dd>
+          </div>
+          <div>
+            <dt>Ownership</dt>
+            <dd>Creator wallet</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="landing-section landing-process" id="protocol">
+        <header className="landing-section-intro reveal-on-scroll">
+          <span>01 / Workflow</span>
+          <h2>A direct path from file to buyer.</h2>
+          <p>
+            Payby keeps storage, policy, and wallet proof in one publishing
+            sequence.
+          </p>
+        </header>
+        <ol className="landing-process-list">
+          <li className="reveal-on-scroll">
+            <span>01</span>
+            <div>
+              <h3>Prepare the media</h3>
+              <p>Select the file, retention period, visibility, and price.</p>
+            </div>
+            <strong>Local</strong>
+          </li>
+          <li className="reveal-on-scroll">
+            <span>02</span>
+            <div>
+              <h3>Store the blob</h3>
+              <p>Upload the original media directly to the active Shelby route.</p>
+            </div>
+            <strong>Shelby</strong>
+          </li>
+          <li className="reveal-on-scroll">
+            <span>03</span>
+            <div>
+              <h3>Record access</h3>
+              <p>Sign the listing and buyer access policy with an Aptos wallet.</p>
+            </div>
+            <strong>Aptos</strong>
+          </li>
+        </ol>
+      </section>
+
+      <section className="landing-section landing-capabilities" id="creator-os">
+        <header className="landing-section-intro reveal-on-scroll">
+          <span>02 / Product</span>
+          <h2>Built around the work creators repeat.</h2>
+          <p>
+            Publish, manage, sell, and verify media without losing track of the
+            wallet or network behind each record.
+          </p>
+        </header>
+        <div className="landing-capability-index">
+          <article className="reveal-on-scroll">
+            <FileVideo size={22} />
+            <span>Vault</span>
+            <h3>One library for every Shelby blob.</h3>
+            <p>Inspect retention, listing state, access, and public links.</p>
+          </article>
+          <article className="reveal-on-scroll">
+            <Wallet size={22} />
+            <span>Commerce</span>
+            <h3>Sales belong to the creator wallet.</h3>
+            <p>Buyer receipts and creator revenue are read from Aptos.</p>
+          </article>
+          <article className="reveal-on-scroll">
+            <Database size={22} />
+            <span>Routes</span>
+            <h3>Know where every write is going.</h3>
+            <p>Review Shelby RPC, fullnode, indexer, and contract details.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="landing-infrastructure" id="networks">
+        <div className="landing-infrastructure-copy reveal-on-scroll">
+          <span>03 / Infrastructure</span>
+          <h2>Storage and access live where they belong.</h2>
+          <p>
+            Shelby stores the media. Aptos records the listing, purchase, and
+            access proof. The connected wallet ties both sides together.
+          </p>
+          <button className="button button-primary button-xl" onClick={onLaunch}>
+            Inspect live routes
+            <ArrowRight size={19} />
+          </button>
+        </div>
+        <div className="landing-network-ledger reveal-on-scroll">
+          <div>
+            <img src={shelbyMark} alt="Shelby" />
+            <span>
+              <small>Media layer</small>
+              <strong>Shelby</strong>
+            </span>
+            <em>Blob storage</em>
+          </div>
+          <div>
+            <img src={aptosMark} alt="Aptos" />
+            <span>
+              <small>Policy layer</small>
+              <strong>Aptos</strong>
+            </span>
+            <em>Access records</em>
+          </div>
+          <div className="is-route">
+            <ShieldCheck size={24} />
+            <span>
+              <small>Current route</small>
+              <strong>Shelbynet</strong>
+            </span>
+            <em>Live testing</em>
+          </div>
+        </div>
       </section>
 
       <footer className="landing-footer">
@@ -2184,9 +2233,8 @@ function LandingPage({
               <PaybyLogo />
             </button>
             <p>
-              Creator media vault for Shelby storage and Aptos access records.
-              Publish media, prove ownership, and let buyers unlock from their
-              own wallet.
+              Creator media stored on Shelby, with ownership and buyer access
+              recorded on Aptos.
             </p>
           </div>
           <div className="landing-footer-links" aria-label="Payby links">
@@ -2202,7 +2250,7 @@ function LandingPage({
           </div>
         </div>
         <div className="landing-footer-bottom">
-          <span>© 2026 Payby. All rights reserved.</span>
+          <span>&copy; 2026 Payby. All rights reserved.</span>
           <span>
             Built by <a href="https://x.com/0xLuxee" target="_blank" rel="noreferrer">Luxe</a>
             <Send size={14} />
@@ -2290,15 +2338,15 @@ function VaultApp({
     activity: "Activity feed",
   }[currentView];
   const viewLabel = {
-    vault: "Creator workspace",
-    publish: "Shelby upload flow",
-    analytics: "Sales and revenue",
-    discover: "Browse creator vaults",
-    library: "Buyer workspace",
-    network: "Live configuration",
-    detail: "Blob operations",
-    profile: "Public identity",
-    activity: "On-chain and local actions",
+    vault: "Creator",
+    publish: "Creator",
+    analytics: "Creator",
+    discover: "Buyer",
+    library: "Buyer",
+    network: "System",
+    detail: "Creator",
+    profile: "Account",
+    activity: "Account",
   }[currentView];
   const routeTransitionKey = `${route.name}-${route.owner ?? ""}-${route.blobName ?? ""}`;
 
@@ -2382,11 +2430,14 @@ function VaultApp({
         </nav>
         <div className="sidebar-note">
           <ShieldCheck size={18} />
-          <p>{network.permanenceNote}</p>
+          <div>
+            <strong>{network.label}</strong>
+            <span>Storage route active</span>
+          </div>
         </div>
       </aside>
 
-      <section className="workspace">
+      <section className="workspace" data-view={currentView}>
         <header className="topbar" key={`topbar-${routeTransitionKey}`}>
           <div className="route-title-block">
             <p className="muted">{viewLabel}</p>
@@ -2401,52 +2452,6 @@ function VaultApp({
             <WalletControl />
           </div>
         </header>
-
-        <section className="status-strip">
-          <StatusTile label="Wallet" value={shortenAddress(accountAddress)} />
-          <StatusTile label="Network" value={network.label} />
-          <StatusTile
-            label="Client access"
-            value={network.apiKey ? "Authenticated" : "Public route"}
-          />
-          <StatusTile
-            label="Metadata"
-            value={
-              metadataStore.syncState === "synced"
-                ? "Synced"
-                : metadataStore.syncState === "syncing"
-                  ? "Syncing"
-                : metadataStore.syncState === "offline"
-                    ? "Offline cache"
-                    : "Ready"
-            }
-          />
-        </section>
-
-        <section className="workspace-intel" aria-label="Workspace readiness">
-          <div>
-            <span>Storage route</span>
-            <strong>{network.shelbyRpcUrl.replace("https://", "")}</strong>
-          </div>
-          <div>
-            <span>Signer state</span>
-            <strong>{accountAddress ? "Wallet attached" : "Connect wallet"}</strong>
-          </div>
-          <div>
-            <span>Publishing mode</span>
-            <strong>{network.apiKey ? "Authenticated route" : "Public route"}</strong>
-          </div>
-          <div>
-            <span>Metadata registry</span>
-            <strong>
-              {metadataStore.syncState === "synced"
-                ? "Synced"
-                : metadataStore.syncState === "offline"
-                  ? "Offline cache"
-                  : "Ready"}
-            </strong>
-          </div>
-        </section>
 
         <section
           className="workspace-page"
@@ -2494,7 +2499,6 @@ function VaultApp({
           ) : null}
           {currentView === "discover" ? (
             <CreatorDiscoveryPanel
-              accountAddress={accountAddress}
               selectedNetwork={selectedNetwork}
               metadataStore={metadataStore}
               onNavigate={onNavigate}
@@ -2786,18 +2790,6 @@ function WalletControl() {
   );
 }
 
-function StatusTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="status-tile">
-      <span>
-        <i aria-hidden="true" />
-        {label}
-      </span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function CreatorAnalyticsPanel({
   accountAddress,
   selectedNetwork,
@@ -2879,38 +2871,45 @@ function CreatorAnalyticsPanel({
           <p className="muted">Creator revenue</p>
           <h2>Analytics</h2>
           <span>
-            Sales and revenue are read from the Payby marketplace contract for
-            the connected creator wallet.
+            Sales and creator proceeds recorded for this wallet on Aptos.
           </span>
         </div>
         <CreditCard size={24} />
       </div>
 
-      <div className="analytics-summary">
-        <div>
-          <span>Total sales</span>
-          <strong>{summary.saleCount}</strong>
-        </div>
-        <div>
-          <span>Total revenue</span>
+      <div className="analytics-overview">
+        <div className="analytics-primary-metric">
+          <span>Creator revenue</span>
           <strong>{formatAssetUnits(summary.revenue)}</strong>
+          <small>Proceeds recorded for the connected wallet.</small>
         </div>
-        <div>
-          <span>Listed media</span>
-          <strong>{activeMediaCount}</strong>
-        </div>
-        <div>
-          <span>Paid media</span>
-          <strong>{paidRows.length}</strong>
-        </div>
+        <dl className="analytics-secondary-metrics">
+          <div>
+            <dt>Sales</dt>
+            <dd>{summary.saleCount}</dd>
+          </div>
+          <div>
+            <dt>Listed media</dt>
+            <dd>{activeMediaCount}</dd>
+          </div>
+          <div>
+            <dt>Paid media</dt>
+            <dd>{paidRows.length}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="section-index">
+        <span>Media performance</span>
+        <strong>{rows.length} listings</strong>
       </div>
 
       {state === "idle" ? (
-        <EmptyState title="Wallet required" body="Connect the creator wallet to load analytics." />
+        <EmptyState icon={<Wallet size={20} />} title="Wallet required" body="Connect the creator wallet to load analytics." />
       ) : state === "loading" ? (
         <EmptyState title="Loading analytics" body="Reading listing sales and revenue from Aptos." />
       ) : state === "error" ? (
-        <EmptyState title="Analytics needs refresh" body="The active fullnode did not return creator sales data. Try again after finality." />
+        <EmptyState icon={<AlertTriangle size={20} />} title="Analytics needs refresh" body="The active fullnode did not return creator sales data. Try again after finality." />
       ) : rows.length === 0 ? (
         <EmptyState title="No creator listings yet" body="Publish media to start building analytics." actionLabel="Publish media" onAction={() => onNavigate({ name: "publish" })} />
       ) : (
@@ -3438,8 +3437,7 @@ function UploadPanel({
             <p className="muted">Publish to {PAYBY_NETWORKS[selectedNetwork].label}</p>
             <h2>Publish media</h2>
             <span>
-              Prepare media, define access, then approve the Shelby and Aptos
-              registration from your wallet.
+              Upload to Shelby and record access on Aptos in one signed flow.
             </span>
           </div>
           <UploadCloud size={24} />
@@ -3490,6 +3488,13 @@ function UploadPanel({
           <span>Video, audio, archives, images, or creator assets.</span>
         </label>
 
+        <div className="form-section-heading">
+          <span>01</span>
+          <div>
+            <strong>Media details</strong>
+            <p>Name and describe what buyers will receive.</p>
+          </div>
+        </div>
         <div className="metadata-form">
           <label>
             <span>Title</span>
@@ -3533,6 +3538,13 @@ function UploadPanel({
           </label>
         </div>
 
+        <div className="form-section-heading">
+          <span>02</span>
+          <div>
+            <strong>Access and price</strong>
+            <p>Choose who can open the media and how access is recorded.</p>
+          </div>
+        </div>
         <div className="access-grid">
           <label>
             <span>Visibility</span>
@@ -3602,6 +3614,13 @@ function UploadPanel({
           </label>
         </div>
 
+        <div className="form-section-heading">
+          <span>03</span>
+          <div>
+            <strong>Retention and files</strong>
+            <p>Review storage duration and the final upload payload.</p>
+          </div>
+        </div>
         <div className="retention-row">
           <label htmlFor="retention">Retention window</label>
           <input
@@ -3724,28 +3743,26 @@ function UploadPanel({
             <span>Access registry ready</span>
           </div>
         </div>
-        <div className="network-mini-card">
-          <span>Active route</span>
-          <strong>{PAYBY_NETWORKS[selectedNetwork].label}</strong>
-          <p>{PAYBY_NETWORKS[selectedNetwork].permanenceNote}</p>
-        </div>
-        <div className="network-mini-card">
-          <span>Access enforcement</span>
-          <strong>
-            {accessMode === "free"
-              ? "Free route"
-              : accessRegistryReady
-                ? "On-chain registry"
-                : "Needs setup"}
-          </strong>
-          <p>
-            {accessMode === "free"
-              ? "Free media is served directly from Shelby."
-              : accessRegistryReady
-                ? "Payby will register this media policy in the marketplace contract after Shelby storage."
-                : accessRegistryBlocker}
-          </p>
-        </div>
+        <dl className="publish-context-list">
+          <div>
+            <dt>Storage route</dt>
+            <dd>{PAYBY_NETWORKS[selectedNetwork].label}</dd>
+          </div>
+          <div>
+            <dt>Access record</dt>
+            <dd>
+              {accessMode === "free"
+                ? "Direct Shelby"
+                : accessRegistryReady
+                  ? "Aptos registry"
+                  : "Setup needed"}
+            </dd>
+          </div>
+          <div>
+            <dt>Payment</dt>
+            <dd>{accessMode === "paid" ? currency : "No payment"}</dd>
+          </div>
+        </dl>
       </aside>
     </section>
   );
@@ -3966,10 +3983,6 @@ function VaultList({
     "idle" | "checking" | "synced" | "unavailable" | "error"
   >("idle");
   const [chainListingCount, setChainListingCount] = React.useState(0);
-  const [salesSummary, setSalesSummary] = React.useState<CreatorSalesSummary>({
-    saleCount: 0,
-    revenue: "0",
-  });
   const network = PAYBY_NETWORKS[selectedNetwork];
   const walletNetworkAligned = isWalletNetworkAligned(
     walletNetwork,
@@ -4097,26 +4110,6 @@ function VaultList({
   }, [accountAddress, selectedNetwork]);
 
   React.useEffect(() => {
-    if (!accountAddress || !PAYBY_NETWORKS[selectedNetwork].marketplaceContractAddress) {
-      setSalesSummary({ saleCount: 0, revenue: "0" });
-      return;
-    }
-
-    let cancelled = false;
-    void readCreatorSalesSummary(selectedNetwork, accountAddress)
-      .then((summary) => {
-        if (!cancelled) setSalesSummary(summary ?? { saleCount: 0, revenue: "0" });
-      })
-      .catch(() => {
-        if (!cancelled) setSalesSummary({ saleCount: 0, revenue: "0" });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accountAddress, selectedNetwork]);
-
-  React.useEffect(() => {
     pendingPublishStore.markIndexed(
       accountAddress,
       selectedNetwork,
@@ -4147,8 +4140,7 @@ function VaultList({
           <p className="muted">Creator vault</p>
           <h2>Vault library</h2>
           <span>
-            Manage Shelby media, chain records, share links, and buyer-facing
-            access from the connected creator wallet.
+            Media, access records, and share links owned by this wallet.
           </span>
         </div>
         <div className="vault-header-actions">
@@ -4173,30 +4165,8 @@ function VaultList({
           <small>Total route usage</small>
         </div>
         <div className="vault-metric-card">
-          <NetworkRouteMark />
-          <span>Route</span>
-          <strong>{network.label}</strong>
-          <small>Active storage path</small>
-        </div>
-        <div className="vault-metric-card">
-          <ShieldCheck size={18} />
-          <span>Chain index</span>
-          <strong>
-            {chainIndexState === "checking"
-              ? "Syncing"
-              : chainIndexState === "synced"
-                ? `${chainListingCount}`
-                : chainIndexState === "unavailable"
-                  ? "Setup needed"
-                  : chainIndexState === "error"
-                    ? "Retry"
-                    : "Ready"}
-          </strong>
-          <small>Marketplace records</small>
-        </div>
-        <div className="vault-metric-card">
           <Clock size={18} />
-          <span>Expiring</span>
+          <span>Retention</span>
           <strong>{expiringSoonCount}</strong>
           <small>Need renewal soon</small>
         </div>
@@ -4205,18 +4175,6 @@ function VaultList({
           <span>Pending</span>
           <strong>{activePendingCount}</strong>
           <small>Waiting for sync</small>
-        </div>
-        <div className="vault-metric-card">
-          <CreditCard size={18} />
-          <span>Sales</span>
-          <strong>{salesSummary.saleCount}</strong>
-          <small>On-chain unlocks</small>
-        </div>
-        <div className="vault-metric-card">
-          <Wallet size={18} />
-          <span>Revenue</span>
-          <strong>{formatAssetUnits(salesSummary.revenue)}</strong>
-          <small>Creator proceeds</small>
         </div>
       </div>
 
@@ -4243,7 +4201,7 @@ function VaultList({
               {chainIndexState === "checking"
                 ? "Rebuilding creator index from Aptos"
                 : chainIndexState === "synced"
-                  ? "Creator registry synced"
+                  ? `Creator registry synced - ${chainListingCount} listings`
                   : chainIndexState === "unavailable"
                     ? "Marketplace registry needs setup"
                     : chainIndexState === "error"
@@ -4266,25 +4224,6 @@ function VaultList({
             <ShieldCheck size={15} />
           </button>
         </div>
-
-        <div className="library-source-banner creator-insight-banner">
-          <CreditCard size={18} />
-          <div>
-            <strong>
-              {salesSummary.saleCount > 0
-                ? `${salesSummary.saleCount} on-chain ${salesSummary.saleCount === 1 ? "sale" : "sales"} recorded`
-                : "No on-chain sales yet"}
-            </strong>
-            <p>
-              Creator revenue is read from the Payby marketplace contract. Paid
-              unlocks transfer the configured asset to the creator and update this
-              summary after finality.
-            </p>
-          </div>
-          <span className="creator-revenue-pill">
-            {formatAssetUnits(salesSummary.revenue)}
-          </span>
-        </div>
       </div>
 
       {(actionMessage || (!walletNetworkAligned && accountAddress)) && (
@@ -4305,6 +4244,7 @@ function VaultList({
 
       {!accountAddress ? (
         <EmptyState
+          icon={<Wallet size={20} />}
           title="Wallet required"
           body="Connect an Aptos wallet to load the Shelby blobs registered to your account."
         />
@@ -4312,11 +4252,13 @@ function VaultList({
         <EmptyState title="Loading vault" body="Reading your Shelby media and on-chain registry records." />
       ) : blobsQuery.isError ? (
         <EmptyState
+          icon={<AlertTriangle size={20} />}
           title="Vault could not be loaded"
           body={(blobsQuery.error as Error)?.message ?? "The active Shelby route did not return media records."}
         />
       ) : blobs.length === 0 ? (
         <EmptyState
+          icon={<UploadCloud size={20} />}
           title="Your vault is empty"
           body="Publish creator media to create the first Shelby record for this wallet."
           actionLabel="Publish media"
@@ -4558,18 +4500,20 @@ function EmptyState({
   body,
   actionLabel,
   onAction,
+  icon,
 }: {
   title: string;
   body: string;
   actionLabel?: string;
   onAction?: () => void;
+  icon?: React.ReactNode;
 }) {
   const isLoading = /^Loading/i.test(title);
 
   return (
     <div className={`empty-state ${isLoading ? "is-loading" : ""}`}>
       <span className="empty-icon">
-        {isLoading ? <Loader2 size={30} /> : <FileArchive size={30} />}
+        {isLoading ? <Loader2 size={20} /> : icon ?? <FileArchive size={20} />}
       </span>
       <strong>{title}</strong>
       <p>{body}</p>
@@ -5618,46 +5562,39 @@ function ProfilePanel({
           {profileMessage ? <p className="inline-status">{profileMessage}</p> : null}
         </div>
       )}
-      <aside className="support-panel profile-actions-panel">
+      <aside
+        className={
+          "support-panel profile-actions-panel " +
+          (isEditingProfile ? "is-editing" : "is-viewing")
+        }
+      >
         <div>
           <p className="muted">Creator identity</p>
           <h3>{isEditingProfile ? "Live preview" : "Profile actions"}</h3>
         </div>
         {isEditingProfile ? (
-          <div className="profile-card-preview profile-card-compact">
-            <div className="profile-preview-top">
-              <div className="avatar-preview">
-                {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
-              </div>
-              <div className="profile-identity">
-                <strong>{draft.displayName}</strong>
-                <span>@{draft.handle}</span>
-                <p>{draft.bio}</p>
+          <>
+            <div className="profile-card-preview profile-card-compact">
+              <div className="profile-preview-top">
+                <div className="avatar-preview">
+                  {avatarPreview ? <img src={avatarPreview} alt="" /> : <User size={34} />}
+                </div>
+                <div className="profile-identity">
+                  <strong>{draft.displayName}</strong>
+                  <span>@{draft.handle}</span>
+                  <p>{draft.bio}</p>
+                </div>
               </div>
             </div>
-          </div>
+            <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
+              <div>
+                <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
+                <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
+              </div>
+              <ShieldCheck size={18} />
+            </div>
+          </>
         ) : null}
-        <div className={`verified-pill ${draft.xVerified ? "is-verified" : "is-unverified"}`}>
-          <div>
-            <span>{draft.xHandle ? `@${draft.xHandle}` : "X handle not connected"}</span>
-            <strong>{draft.xVerified ? "Verified creator" : "Creator verification pending"}</strong>
-          </div>
-          <ShieldCheck size={18} />
-        </div>
-        <div className="profile-stats">
-          <DetailItem label="Wallet" value={shortenAddress(accountAddress)} />
-          <DetailItem label="Media" value={`${mediaCount}`} />
-          <DetailItem
-            label="Profile"
-            value={chainProfile ? "Published" : "Ready"}
-          />
-          {chainProfile?.updatedAt ? (
-            <DetailItem
-              label="Updated"
-              value={new Date(chainProfile.updatedAt).toLocaleDateString()}
-            />
-          ) : null}
-        </div>
         {!isEditingProfile ? (
           <button
             className="button button-primary"
@@ -5767,7 +5704,7 @@ function ActivityPanel({
           <p className="muted">Recent actions</p>
           <h2>Activity feed</h2>
           <span>
-            Showing only activity for {accountAddress ? shortenAddress(accountAddress) : "the connected wallet"} on{" "}
+            Wallet-scoped transactions and local actions on{" "}
             {PAYBY_NETWORKS[selectedNetwork].label}.
           </span>
         </div>
@@ -5871,6 +5808,7 @@ function ActivityPanel({
 
       {!hasProofItems ? (
         <EmptyState
+          icon={<Activity size={20} />}
           title={filter === "all" ? "No activity yet" : "No matching proof"}
           body={
             filter === "all"
@@ -5927,12 +5865,10 @@ function ActivityPanel({
 }
 
 function CreatorDiscoveryPanel({
-  accountAddress,
   selectedNetwork,
   metadataStore,
   onNavigate,
 }: {
-  accountAddress: string;
   selectedNetwork: PaybyNetwork;
   metadataStore: ReturnType<typeof useStoredMetadata>;
   onNavigate: (route: AppRoute) => void;
@@ -5962,10 +5898,6 @@ function CreatorDiscoveryPanel({
     () => knownCreators.filter((item) => item.network === selectedNetwork),
     [knownCreators, selectedNetwork],
   );
-  const isOwnCreator =
-    Boolean(accountAddress && normalizedCreator) &&
-    accountAddress.toLowerCase() === normalizedCreator.toLowerCase();
-
   React.useEffect(() => {
     if (!normalizedCreator) {
       setLoadState("idle");
@@ -6061,9 +5993,8 @@ function CreatorDiscoveryPanel({
             <p className="muted">Buyer discovery</p>
             <h2>Discover creators</h2>
             <span>
-              Browse public creator vaults by wallet address. Your own Vault
-              stays private to the connected wallet, while Discover lets buyers
-              explore another creator and purchase from their media pages.
+              Open a creator collection and unlock media with the connected
+              buyer wallet.
             </span>
           </div>
           <Search size={24} />
@@ -6075,7 +6006,7 @@ function CreatorDiscoveryPanel({
             <input
               value={creatorAddress}
               onChange={(event) => setCreatorAddress(event.target.value)}
-              placeholder="Creator wallet address, 0x..."
+              placeholder="Paste creator wallet address"
               onKeyDown={(event) => {
                 if (event.key === "Enter") openCreator();
               }}
@@ -6134,10 +6065,10 @@ function CreatorDiscoveryPanel({
             <div className="discovery-empty-card">
               <Sparkles size={20} />
               <div>
-                <strong>Paste a creator wallet to build your feed</strong>
+                <strong>Open a creator to start your feed</strong>
                 <p>
-                  Payby remembers creators you open on this route, so buyers can
-                  return to active vaults without mixing them into their own Vault.
+                  Recently opened creators stay here for quick access on this
+                  network.
                 </p>
               </div>
             </div>
@@ -6156,19 +6087,26 @@ function CreatorDiscoveryPanel({
                   "Payby is reading this creator's owner-scoped listings from Aptos. Purchases happen from your connected wallet on each media page."}
               </p>
             </div>
-            <button
-              className="button button-secondary compact-button"
-              type="button"
-              onClick={() => onNavigate({ name: "creator", owner: normalizedCreator })}
-            >
-              Public page
-              <ExternalLink size={15} />
-            </button>
+            <div className="discovery-creator-actions">
+              <span>
+                <strong>{salesSummary.saleCount}</strong>
+                on-chain sales
+              </span>
+              <button
+                className="button button-secondary compact-button"
+                type="button"
+                onClick={() => onNavigate({ name: "creator", owner: normalizedCreator })}
+              >
+                Public page
+                <ExternalLink size={15} />
+              </button>
+            </div>
           </div>
         ) : null}
 
         {loadState === "idle" ? (
           <EmptyState
+            icon={<Search size={20} />}
             title="Find a creator"
             body="Paste a creator wallet address to browse their public Payby media without switching away from your buyer wallet."
           />
@@ -6179,11 +6117,13 @@ function CreatorDiscoveryPanel({
           />
         ) : loadState === "error" ? (
           <EmptyState
+            icon={<AlertTriangle size={20} />}
             title="Creator lookup needs refresh"
             body="Payby could not read this creator registry from the active route. Check the address, then refresh."
           />
         ) : loadState === "empty" ? (
           <EmptyState
+            icon={<FileArchive size={20} />}
             title="No public media"
             body="This creator has no active public or unlisted Payby listings on the selected route."
           />
@@ -6223,34 +6163,6 @@ function CreatorDiscoveryPanel({
           </ul>
         )}
       </div>
-
-      <aside className="support-panel">
-        <div>
-          <p className="muted">Creator proof</p>
-          <h3>{normalizedCreator ? shortenAddress(normalizedCreator) : "Choose creator"}</h3>
-        </div>
-        <div className="network-mini-card">
-          <span>Connected wallet</span>
-          <strong>{accountAddress ? shortenAddress(accountAddress) : "Connect wallet"}</strong>
-          <p>
-            Buyer actions use the currently connected wallet. You do not need to
-            switch to the creator wallet to browse or purchase.
-          </p>
-        </div>
-        <div className="network-mini-card">
-          <span>Viewing mode</span>
-          <strong>{isOwnCreator ? "Own creator vault" : "External creator"}</strong>
-          <p>
-            Vault stays scoped to your wallet. Discovery reads another creator's
-            public registry and routes purchases through media pages.
-          </p>
-        </div>
-        <div className="network-mini-card">
-          <span>Creator sales</span>
-          <strong>{salesSummary.saleCount}</strong>
-          <p>{formatAssetUnits(salesSummary.revenue)} recorded on-chain.</p>
-        </div>
-      </aside>
     </section>
   );
 }
@@ -6374,34 +6286,32 @@ function BuyerLibraryPanel({
           <p className="muted">Buyer workspace</p>
           <h2>Buyer library</h2>
           <span>
-            Media unlocked by this wallet, with purchase receipts and on-chain
-            access checks kept wallet-scoped.
+            Purchases and access proofs owned by the connected buyer wallet.
           </span>
         </div>
         <ReceiptText size={24} />
       </div>
 
-      <div className="buyer-library-summary" aria-label="Buyer library summary">
-        <div>
-          <ReceiptText size={18} />
-          <span>Library items</span>
+      <div className="library-overview" aria-label="Buyer library summary">
+        <div className="library-primary-metric">
+          <span>Unlocked media</span>
           <strong>{receipts.length}</strong>
+          <small>Items available to this buyer wallet.</small>
         </div>
-        <div>
-          <CreditCard size={18} />
-          <span>Purchases</span>
-          <strong>{purchaseCount}</strong>
-        </div>
-        <div>
-          <KeyRound size={18} />
-          <span>Wallet sessions</span>
-          <strong>{sessionCount}</strong>
-        </div>
-        <div>
-          <Clock size={18} />
-          <span>Last unlock</span>
-          <strong>{lastReceipt ? new Date(lastReceipt.confirmedAt).toLocaleDateString() : "None"}</strong>
-        </div>
+        <dl className="library-secondary-metrics">
+          <div>
+            <dt>Purchases</dt>
+            <dd>{purchaseCount}</dd>
+          </div>
+          <div>
+            <dt>Wallet sessions</dt>
+            <dd>{sessionCount}</dd>
+          </div>
+          <div>
+            <dt>Last unlock</dt>
+            <dd>{lastReceipt ? new Date(lastReceipt.confirmedAt).toLocaleDateString() : "None"}</dd>
+          </div>
+        </dl>
       </div>
 
       <div className="library-source-banner">
@@ -6424,11 +6334,13 @@ function BuyerLibraryPanel({
 
       {!accountAddress ? (
         <EmptyState
+          icon={<Wallet size={20} />}
           title="Wallet required"
           body="Connect the buyer wallet to load purchases and unlocked media."
         />
       ) : receipts.length === 0 ? (
         <EmptyState
+          icon={<ReceiptText size={20} />}
           title="No buyer media yet"
           body="Unlock a shared Payby media link and it will appear here for this wallet."
         />
@@ -6601,8 +6513,7 @@ function NetworkPanel({
           <p className="muted">Live configuration</p>
           <h2>{network.label}</h2>
           <span>
-            Inspect the active Shelby route before publishing or retrieving
-            creator media.
+            Verify the storage, execution, and contract routes used by Payby.
           </span>
         </div>
         <KeyRound size={24} />
@@ -6654,18 +6565,6 @@ function NetworkPanel({
           </strong>
         </div>
       </div>
-      <section className="integration-proof" aria-label="Shelby and Aptos integration proof">
-        <div className="integration-proof-head">
-          <div>
-            <span>Route proof</span>
-            <strong>Ready for publishing</strong>
-          </div>
-          <p>
-            Payby is using Shelby for media storage and Aptos for wallet
-            signing, marketplace policy, sales, purchases, and profile state.
-          </p>
-        </div>
-      </section>
       <div className="funding-helper">
         <div>
           <CreditCard size={18} />
@@ -6915,7 +6814,7 @@ function PublicCreatorPage({
         {loadState === "checking" ? (
         <EmptyState title="Loading creator vault" body="Reading creator listings from the Payby marketplace registry." />
       ) : loadState === "error" ? (
-          <EmptyState title="Creator vault needs refresh" body="The active fullnode did not return this creator registry. Refresh the route and reopen this creator." />
+          <EmptyState icon={<AlertTriangle size={20} />} title="Creator vault needs refresh" body="The active fullnode did not return this creator registry. Refresh the route and reopen this creator." />
         ) : items.length === 0 ? (
           <EmptyState title="No public media" body="This creator has no public or unlisted Payby media on the active route." />
         ) : (
