@@ -2092,13 +2092,6 @@ function LandingPage({
             <small>Recorded on</small>
             <strong>Aptos</strong>
           </div>
-          <div className="landing-route-proof">
-            <ShieldCheck size={18} />
-            <span>
-              <small>Buyer proof</small>
-              <strong>Wallet access confirmed</strong>
-            </span>
-          </div>
         </figure>
 
         <dl className="landing-hero-ledger">

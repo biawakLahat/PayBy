@@ -356,7 +356,6 @@
 }
 
 .landing-route-node small,
-.landing-route-proof small,
 .landing-network-ledger small {
   color: var(--muted);
   font-size: 0.6875rem;
@@ -364,8 +363,7 @@
   line-height: 1.25;
 }
 
-.landing-route-node strong,
-.landing-route-proof strong {
+.landing-route-node strong {
   max-width: 100%;
   overflow: hidden;
   color: var(--text);
@@ -374,26 +372,6 @@
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.landing-route-proof {
-  position: absolute;
-  right: 7%;
-  bottom: 64px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 13px 0;
-  color: var(--success);
-  opacity: 0;
-  animation: route-proof-in 480ms 1080ms var(--ease-out-expo) forwards;
-}
-
-.landing-route-proof span {
-  display: grid;
-  gap: 3px;
 }
 
 .landing-hero-ledger {
@@ -705,17 +683,6 @@
   }
 }
 
-@keyframes route-proof-in {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
 @media (max-width: 1080px) {
   .landing-hero {
     grid-template-columns: 1fr;
@@ -859,11 +826,6 @@
     font-size: 0.6875rem;
   }
 
-  .landing-route-proof {
-    right: 5%;
-    bottom: 0;
-  }
-
   .landing-hero-ledger {
     grid-template-columns: 1fr;
   }
@@ -943,7 +905,6 @@
   .landing-editorial .landing-nav .nav-actions,
   .landing-hero-copy > *,
   .landing-route-node,
-  .landing-route-proof,
   .landing-route-line::after {
     opacity: 1;
     transform: none;
