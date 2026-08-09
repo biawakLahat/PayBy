@@ -2597,7 +2597,13 @@ function NetworkSwitch({
         onClick={() => setOpen((value) => !value)}
       >
         <span className="network-trigger-icon">
-          <NetworkRouteMark />
+          <img
+            className="network-trigger-logo"
+            src={shelbyMark}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+          />
         </span>
         <span className="network-trigger-copy">
           <strong>{network.label}</strong>
@@ -2633,27 +2639,6 @@ function NetworkSwitch({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function NetworkRouteMark() {
-  return (
-    <svg className="network-route-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <path
-        className="network-route-shell"
-        d="M16 3.8 26.8 10v12L16 28.2 5.2 22V10L16 3.8Z"
-      />
-      <path
-        className="network-route-line"
-        d="M9.8 13.3 16 9.8l6.2 3.5v7.2L16 24l-6.2-3.5v-7.2Z"
-      />
-      <path
-        className="network-route-path"
-        d="M10.2 16h5.2c1.7 0 2.5-1.8 1.2-2.9l-.8-.7M21.8 16h-5.2c-1.7 0-2.5 1.8-1.2 2.9l.8.7"
-      />
-      <circle className="network-route-node node-a" cx="10.2" cy="16" r="1.6" />
-      <circle className="network-route-node node-b" cx="21.8" cy="16" r="1.6" />
-    </svg>
   );
 }
 

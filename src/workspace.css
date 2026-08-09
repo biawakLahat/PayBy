@@ -588,42 +588,23 @@
 .app-shell .network-trigger-icon {
   width: 27px;
   height: 27px;
-  display: grid;
-  place-items: center;
+  display: block;
+  overflow: hidden;
   border: 1px solid var(--ws-line);
   border-radius: 4px;
-  color: var(--ws-accent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-shell .network-trigger-icon::after {
   display: none;
 }
 
-.app-shell .network-route-mark {
-  width: 19px;
-  height: 19px;
-  transition: transform 180ms var(--ease-out-quint);
-}
-
-.app-shell .network-route-shell,
-.app-shell .network-route-line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.35;
-}
-
-.app-shell .network-route-path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.25;
-}
-
-.app-shell .network-route-node {
-  fill: currentColor;
-}
-
-.app-shell .network-trigger.is-open .network-route-mark {
-  transform: rotate(8deg);
+.app-shell .network-trigger-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .app-shell .network-trigger-copy {
@@ -4162,8 +4143,19 @@
 .public-page .network-trigger-icon {
   width: var(--foundation-space-5);
   height: var(--foundation-space-5);
-  border: 0;
-  color: var(--ws-accent);
+  overflow: hidden;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell .network-trigger-logo,
+.public-page .network-trigger-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .app-shell .network-trigger-copy,
@@ -6362,15 +6354,239 @@
   transform: none;
 }
 
-.app-shell .vault-toolbar .search-box:focus-within {
-  border: 0;
+.app-shell .search-box:focus-within {
+  border-color: var(--ws-line-strong);
   background: var(--ws-surface-2);
   box-shadow: inset 0 0 0 1px var(--ws-line-strong);
 }
 
-.app-shell .vault-toolbar .search-box input:focus-visible {
+.app-shell .search-box input:focus-visible {
   outline: 0;
   box-shadow: none;
+}
+
+.app-shell .vault-publish-button {
+  gap: 8px;
+}
+
+.app-shell .vault-publish-button svg {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: currentColor;
+  padding: 0;
+  box-shadow: none;
+  stroke-width: 2;
+}
+
+@media (min-width: 961px) {
+  .app-shell .activity-panel,
+  .app-shell .network-panel,
+  .app-shell .vault-panel {
+    gap: 18px;
+  }
+
+  .app-shell .proof-summary > div {
+    min-height: 74px;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 2px 8px;
+    padding: 12px 15px;
+  }
+
+  .app-shell .proof-summary svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-shell .proof-summary span {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .app-shell .proof-summary strong {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .app-shell .network-route-card {
+    min-height: 108px;
+    grid-template-columns: minmax(300px, 1fr) 182px;
+    gap: 20px;
+    padding: 17px 20px;
+  }
+
+  .app-shell .network-route-card > div:first-child {
+    gap: 3px;
+  }
+
+  .app-shell .network-route-card > div:first-child > span {
+    font-size: 9px;
+  }
+
+  .app-shell .network-route-card > div:first-child > strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .app-shell .network-route-card p {
+    max-width: 64ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .network-route-meta {
+    min-width: 0;
+    gap: 3px;
+    padding-left: 18px;
+  }
+
+  .app-shell .network-route-meta > span {
+    min-height: 23px;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .app-shell .network-route-meta svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .app-shell .funding-helper {
+    min-height: 78px;
+    gap: 18px;
+    padding: 12px 15px;
+  }
+
+  .app-shell .funding-helper > div {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 1px 9px;
+  }
+
+  .app-shell .funding-helper svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-shell .funding-helper span {
+    font-size: 9px;
+  }
+
+  .app-shell .funding-helper strong {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .app-shell .funding-helper p {
+    max-width: 68ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .funding-helper .button {
+    min-height: 40px;
+    padding-inline: 13px;
+    font-size: 13px;
+  }
+
+  .app-shell .profile-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+  }
+
+  .app-shell .workspace-page .profile-card-final,
+  .app-shell .workspace-page .profile-card-final:hover,
+  .app-shell .workspace-page .profile-card-final:focus-within {
+    gap: 16px;
+    padding: 23px 24px;
+  }
+
+  .app-shell .profile-card-final .profile-preview-top {
+    gap: 16px;
+  }
+
+  .app-shell .profile-card-final .avatar-preview {
+    width: 72px;
+    height: 72px;
+  }
+
+  .app-shell .profile-card-final .profile-identity {
+    gap: 3px;
+  }
+
+  .app-shell .profile-card-final .profile-identity > strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .app-shell .profile-card-final .profile-identity > p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .app-shell .profile-card-final .verified-pill {
+    min-height: 0;
+    padding: 7px 10px;
+  }
+
+  .app-shell .profile-card-final .profile-stats > div {
+    min-height: 56px;
+    gap: 3px;
+    padding: 10px 12px;
+  }
+
+  .app-shell .profile-card-final .profile-stats span {
+    font-size: 9px;
+  }
+
+  .app-shell .profile-card-final .profile-stats strong {
+    font-size: 14px;
+  }
+
+  .app-shell .profile-actions-panel {
+    gap: 13px;
+    padding: 18px;
+  }
+
+  .app-shell .profile-actions-panel h3 {
+    font-size: 18px;
+  }
+
+  .app-shell .profile-actions-panel .button {
+    min-height: 42px;
+    padding-inline: 13px;
+    font-size: 13px;
+  }
+
+  .app-shell .library-source-banner {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 11px 14px;
+  }
+
+  .app-shell .library-source-banner > svg {
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+  }
+
+  .app-shell .library-source-banner strong {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .app-shell .library-source-banner p {
+    max-width: 72ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .library-source-banner > .button {
+    min-height: 40px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 960px) {

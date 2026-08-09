@@ -463,11 +463,6 @@ a {
   opacity: 0.58;
 }
 
-.route-action-icon .network-route-mark {
-  width: 20px;
-  height: 20px;
-}
-
 .hero-actions .button:hover .route-action-icon {
   transform: translateY(-1px) rotate(-3deg);
   border-color: color-mix(in oklch, var(--accent) 54%, var(--line));
@@ -2533,97 +2528,33 @@ a {
   width: 32px;
   height: 32px;
   position: relative;
-  display: grid;
-  place-items: center;
+  display: block;
+  overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--accent) 34%, var(--line));
   border-radius: var(--radius-sm);
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--text) 9%, transparent), transparent 54%),
-    radial-gradient(circle at 30% 24%, color-mix(in oklch, var(--accent) 20%, transparent), transparent 48%),
-    color-mix(in oklch, var(--bg-elevated) 78%, transparent);
-  color: var(--accent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--text) 12%, transparent),
-    0 10px 24px color-mix(in oklch, var(--accent) 10%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .network-trigger-icon::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 1px solid color-mix(in oklch, var(--cool) 26%, transparent);
-  border-radius: calc(var(--radius-sm) - 2px);
-  opacity: 0.62;
-  transform: rotate(45deg) scale(0.7);
+  display: none;
 }
 
-.network-route-mark {
-  position: relative;
-  z-index: 1;
-  width: 22px;
-  height: 22px;
-  overflow: visible;
-}
-
-.network-route-shell,
-.network-route-line,
-.network-route-path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.network-route-shell {
-  stroke: color-mix(in oklch, var(--accent) 78%, var(--text));
-  stroke-width: 2.1;
-}
-
-.network-route-line {
-  stroke: color-mix(in oklch, var(--cool) 58%, var(--text));
-  stroke-width: 1.35;
-  opacity: 0.66;
-}
-
-.network-route-path {
-  stroke: var(--text);
-  stroke-width: 1.6;
-}
-
-.network-route-node {
-  fill: var(--accent);
-  stroke: color-mix(in oklch, var(--bg-elevated) 82%, var(--surface));
-  stroke-width: 1.5;
-}
-
-.network-trigger:hover .network-route-mark,
-.network-trigger.is-open .network-route-mark {
-  transform: translateY(-1px) rotate(-2deg);
-  transition: transform 220ms var(--ease-out-quint);
+.network-trigger-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .network-trigger.is-open .network-trigger-icon {
   border-color: color-mix(in oklch, var(--accent) 62%, var(--line));
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--text) 14%, transparent),
-    0 14px 34px color-mix(in oklch, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 16%, transparent);
 }
 
 :root[data-theme="light"] .network-trigger-icon {
-  background:
-    linear-gradient(180deg, color-mix(in oklch, white 54%, transparent), transparent 58%),
-    radial-gradient(circle at 32% 22%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 48%),
-    color-mix(in oklch, var(--bg-elevated) 82%, var(--surface));
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklch, white 76%, transparent),
-    0 10px 24px color-mix(in oklch, var(--brand-bronze) 10%, transparent);
-}
-
-:root[data-theme="light"] .network-route-path {
-  stroke: color-mix(in oklch, var(--text) 82%, var(--accent));
-}
-
-:root[data-theme="light"] .network-route-node {
-  stroke: color-mix(in oklch, var(--bg-elevated) 88%, white);
+  background: transparent;
+  box-shadow: none;
 }
 
 .network-trigger-copy {
