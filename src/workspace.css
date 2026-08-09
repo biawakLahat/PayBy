@@ -6596,3 +6596,97 @@
     background: var(--ws-sidebar-bg);
   }
 }
+
+/* Keep compact information blocks tied to their content. The legacy page
+   minimum height must not stretch their grid rows into empty panels. */
+.app-shell .workspace-page > .panel {
+  align-content: start;
+}
+
+.app-shell .library-source-banner,
+.app-shell .funding-helper,
+.app-shell .network-route-card {
+  align-self: start;
+}
+
+.app-shell .library-source-banner {
+  align-items: start;
+}
+
+.app-shell .library-source-banner > svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 3px;
+}
+
+.app-shell .library-source-banner > div:not(.discovery-creator-actions),
+.app-shell .funding-helper > div,
+.app-shell .network-route-card > div:first-child {
+  min-width: 0;
+}
+
+.app-shell .library-source-banner > div:not(.discovery-creator-actions) {
+  gap: 4px;
+}
+
+.app-shell .library-source-banner strong,
+.app-shell .funding-helper strong {
+  font-family: var(--foundation-font-interface);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.app-shell .library-source-banner p,
+.app-shell .funding-helper p,
+.app-shell .network-route-card p {
+  max-width: 66ch;
+  font-family: var(--foundation-font-interface);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.app-shell .library-source-banner > .button {
+  align-self: center;
+}
+
+.app-shell .funding-helper {
+  align-items: start;
+}
+
+.app-shell .funding-helper > div {
+  row-gap: 3px;
+}
+
+.app-shell .funding-helper svg {
+  margin-top: 2px;
+}
+
+.app-shell .funding-helper span,
+.app-shell .network-route-card > div:first-child > span {
+  font-family: var(--foundation-font-interface);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.app-shell .funding-helper .button {
+  align-self: center;
+}
+
+.app-shell .network-route-card {
+  align-items: center;
+}
+
+.app-shell .network-route-card > div:first-child {
+  gap: 4px;
+}
+
+.app-shell .network-route-card > div:first-child > strong {
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
