@@ -2357,7 +2357,7 @@ function VaultApp({
           <button className="brand-mark sidebar-brand" onClick={onHome} aria-label="Back to Payby landing">
             <PaybyLogo />
           </button>
-          <span>Creator media vault</span>
+          <span>Shelby creator workspace</span>
         </div>
         <nav className="side-nav" aria-label="Payby sections">
           <span className="side-nav-label">Creator</span>
@@ -2871,7 +2871,7 @@ function CreatorAnalyticsPanel({
           <p className="muted">Creator revenue</p>
           <h2>Analytics</h2>
           <span>
-            Sales and creator proceeds recorded for this wallet on Aptos.
+            Track paid unlocks and creator proceeds recorded by the Payby contract.
           </span>
         </div>
         <CreditCard size={24} />
@@ -3437,7 +3437,7 @@ function UploadPanel({
             <p className="muted">Publish to {PAYBY_NETWORKS[selectedNetwork].label}</p>
             <h2>Publish media</h2>
             <span>
-              Upload to Shelby and record access on Aptos in one signed flow.
+              Store media on Shelby, then publish its access policy and listing on Aptos.
             </span>
           </div>
           <UploadCloud size={24} />
@@ -4140,7 +4140,7 @@ function VaultList({
           <p className="muted">Creator vault</p>
           <h2>Vault library</h2>
           <span>
-            Media, access records, and share links owned by this wallet.
+            Manage media stored on Shelby and the access records linked to this creator wallet.
           </span>
         </div>
         <div className="vault-header-actions">
@@ -5399,7 +5399,7 @@ function ProfilePanel({
             <div>
               <p className="muted">Edit creator profile</p>
               <h2>{profile.displayName}</h2>
-              <span>Update the identity buyers see on Payby creator and media pages.</span>
+              <span>Control the identity shown on your creator page and media listings.</span>
             </div>
             <User size={24} />
           </div>
@@ -5704,7 +5704,7 @@ function ActivityPanel({
           <p className="muted">Recent actions</p>
           <h2>Activity feed</h2>
           <span>
-            Wallet-scoped transactions and local actions on{" "}
+            Transactions and product actions for this wallet on{" "}
             {PAYBY_NETWORKS[selectedNetwork].label}.
           </span>
         </div>
@@ -5993,8 +5993,7 @@ function CreatorDiscoveryPanel({
             <p className="muted">Buyer discovery</p>
             <h2>Discover creators</h2>
             <span>
-              Open a creator collection and unlock media with the connected
-              buyer wallet.
+              Find a creator by Aptos address and browse media available on this route.
             </span>
           </div>
           <Search size={24} />
@@ -6286,7 +6285,7 @@ function BuyerLibraryPanel({
           <p className="muted">Buyer workspace</p>
           <h2>Buyer library</h2>
           <span>
-            Purchases and access proofs owned by the connected buyer wallet.
+            Review unlocked media and the access proof held by this buyer wallet.
           </span>
         </div>
         <ReceiptText size={24} />
@@ -6513,7 +6512,7 @@ function NetworkPanel({
           <p className="muted">Live configuration</p>
           <h2>{network.label}</h2>
           <span>
-            Verify the storage, execution, and contract routes used by Payby.
+            Review the Shelby storage route and Aptos contracts used for this session.
           </span>
         </div>
         <KeyRound size={24} />
