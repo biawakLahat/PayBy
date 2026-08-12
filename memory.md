@@ -23,6 +23,19 @@ This file records decisions and progress so future work keeps the same direction
 - Gateway work is deferred until Shelby Early Access is granted.
 - Current retrieval mode is direct Shelby.
 - Shelbynet is the practical current test route.
+- Owner-scoped Move registries must use flat table keys. Nested `Table` values caused live Shelbynet simulation timeouts while flat writes completed normally.
+- Publish registry finalization uses two idempotent wallet transactions: owner listing first, metadata commitment second.
+
+## Owner Registry V2 - 12 August 2026
+
+- The canonical Shelbynet marketplace address remains `0x962ebbcf81cbc5dc0950a8ca036d54828481043f1df8960a2ec4d50fae8c3a12`; no frontend address correction was required.
+- Upgrade publish transaction: `0xb4bc9b9d56dae19c2b139c62f5e09425ffe8854466be36f011bb926e0948c951`.
+- V2 resource initialization transaction: `0x452d0536df8257f5f074a779ad3be51c81760bc79f17167c40f5e635eca6a20d`.
+- `upsert_listing_for_owner` now writes a flat `(owner, blob_name)` key and simulated successfully on the public Shelbynet endpoint without an API key in 1.47 seconds.
+- `upsert_listing_for_owner_with_metadata` also simulated successfully after the V2 migration, proving the earlier timeout came from the old nested-table implementation rather than Petra parsing the address.
+- The frontend deliberately keeps separate listing and metadata transactions for smaller wallet prompts and resumable retries.
+- A real Petra-backed publish remains the final proof; simulation, compile, tests, and ABI checks are not a substitute for wallet E2E.
+- Readiness treats Shelbynet as the required route. Shelby Testnet stays visible as an informational warning until Early Access provides a supported SDK route and a deployable V2 contract signer.
 - Shelby Testnet requires Early Access.
 
 ## Implemented So Far

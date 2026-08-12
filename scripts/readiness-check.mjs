@@ -12,6 +12,7 @@ function getNetworks() {
   return {
     shelbynet: {
       label: "Shelbynet",
+      required: true,
       fullnode:
         env("PAYBY_SHELBYNET_FULLNODE_URL") ||
         "https://api.shelbynet.shelby.xyz/v1",
@@ -28,6 +29,7 @@ function getNetworks() {
     },
     "shelby-testnet": {
       label: "Shelby Testnet",
+      required: false,
       fullnode:
         env("PAYBY_TESTNET_FULLNODE_URL") ||
         "https://api.testnet.aptoslabs.com/v1",
@@ -88,15 +90,67 @@ async function callView({ fullnode, apiKey, contract, functionName, args = [] })
   return response.json();
 }
 
+async function readModuleAbi({ fullnode, apiKey, contract }) {
+  const headers = {};
+  if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+  const response = await fetch(
+    `${fullnode.replace(/\/$/, "")}/accounts/${contract}/module/payby_marketplace`,
+    { headers },
+  );
+
+  if (!response.ok) {
+    const body = (await response.text()).replace(/\s+/g, " ").slice(0, 160);
+    throw new Error(`HTTP ${response.status}${body ? ` - ${body}` : ""}`);
+  }
+
+  const module = await response.json();
+  return module?.abi?.exposed_functions ?? [];
+}
+
 async function checkNetwork([key, network]) {
   const label = network.label;
+  if (!network.required) {
+    status(
+      true,
+      `${label} release gate`,
+      "informational until Shelby Early Access restores the supported SDK route",
+    );
+  }
   if (!network.contract) {
     status(false, `${label} marketplace`, "contract address is empty");
-    return false;
+    return { key, required: network.required, ok: false };
   }
 
   let ok = true;
   status(true, `${label} marketplace`, `configured at ${network.contract}`);
+
+  try {
+    const functions = await readModuleAbi({
+      fullnode: network.fullnode,
+      apiKey: network.apiKey,
+      contract: network.contract,
+    });
+    const expectedEntries = new Map([
+      ["upsert_listing_for_owner", 7],
+      ["upsert_listing_metadata_for_owner", 4],
+    ]);
+    for (const [functionName, parameterCount] of expectedEntries) {
+      const entry = functions.find(
+        (candidate) => candidate.name === functionName && candidate.is_entry,
+      );
+      const entryReady = entry?.params?.length === parameterCount;
+      ok = status(
+        entryReady,
+        `${label} ${functionName}`,
+        entryReady
+          ? `entry callable with ${parameterCount - 1} arguments`
+          : "missing or ABI does not match the production registry flow",
+      ) && ok;
+    }
+  } catch (error) {
+    ok = false;
+    status(false, `${label} marketplace ABI`, error.message);
+  }
 
   const probeOwner =
     "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -147,7 +201,7 @@ async function checkNetwork([key, network]) {
     status(false, `${label} payment asset`, "empty; paid unlocks are not production-ready");
   }
 
-  return ok;
+  return { key, required: network.required, ok };
 }
 
 await loadDotEnv();
@@ -161,7 +215,14 @@ for (const entry of Object.entries(getNetworks())) {
   results.push(await checkNetwork(entry));
 }
 
-const ready = results.every(Boolean);
+const ready = results.filter((result) => result.required).every((result) => result.ok);
+const optionalWarnings = results.some((result) => !result.required && !result.ok);
 console.log("=====================");
-console.log(ready ? "READY" : "NOT READY");
+console.log(
+  ready
+    ? optionalWarnings
+      ? "READY - required route passes; optional Early Access route has warnings"
+      : "READY"
+    : "NOT READY",
+);
 process.exitCode = ready ? 0 : 1;

@@ -4,16 +4,16 @@ This file tracks what should be done next. Update it whenever Payby makes progre
 
 ## Active Priorities
 
-1. Continue Phase 5 shared UI boundaries: extract remaining form controls and keep the composition root focused without changing the landing page.
-2. Verify the redesigned editorial landing page on the deployed Vercel app at desktop, tablet, and mobile widths.
-3. Resolve the Shelbynet readiness view-call warnings before real community testing.
-4. Run real multi-wallet E2E:
+1. Retry the funded Petra publish with the flat owner registry and verify both listing and metadata approvals reach Aptos finality.
+2. Verify the published media appears in Vault and can be retrieved directly from Shelby after a clean browser reload.
+3. Run real multi-wallet E2E:
    - wallet A publishes media,
    - wallet B opens media page,
    - wallet B purchases/unlocks paid media,
    - wallet A sees sales/revenue,
    - wallet B sees buyer library,
    - Activity remains wallet-scoped.
+4. Verify the redesigned editorial landing page on the deployed Vercel app at desktop, tablet, and mobile widths.
 5. Extract remaining input/select/textarea/dialog controls and workspace shell primitives only after their existing visual and interaction contracts are documented.
 6. Finish provider/service splitting so the remaining `AppRuntime` chunk stays small after route chunks load.
 7. Prepare Shelby Early Access proof:
@@ -22,6 +22,19 @@ This file tracks what should be done next. Update it whenever Payby makes progre
    - how Aptos/Shelbynet records access,
    - what is already live on Shelbynet,
    - what needs Shelby Testnet access.
+
+## Owner Registry Simulation Repair - 12 August 2026
+
+- [x] Reproduce Petra's timeout against `upsert_listing_for_owner_with_metadata` on the live Shelbynet fullnode.
+- [x] Prove that the deployed address and ABI are correct; the previously suggested alternative address was a different, empty account.
+- [x] Isolate the timeout to nested Move tables in the owner-scoped registry; flat-table writes simulate normally.
+- [x] Add flat V2 resources keyed by `(owner, blob_name)` and `(buyer, owner)` without changing existing resource layouts.
+- [x] Split the frontend registry flow into listing approval and metadata approval with explicit fullnode preflight.
+- [x] Deploy and initialize the compatible upgrade at the existing Payby address.
+- [x] Verify owner-listing simulation without an API key: success in 1.47 seconds, `Executed successfully`.
+- [x] Verify the combined V2 write path: success in 1.46 seconds, `Executed successfully`.
+- [x] Pass 26 TypeScript tests, Move compile, and the Move registry unit test.
+- [ ] Complete the real Petra approval, submission, finality, Vault recovery, and direct Shelby retrieval flow.
 
 ## Completed 14 July 2026
 

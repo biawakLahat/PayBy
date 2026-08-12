@@ -57,11 +57,12 @@ the metadata commitment associated with a listing.
    access policy, price, currency, and retention.
 4. Sign the Shelby blob-registration transaction.
 5. Upload the media blob and a Payby metadata blob to Shelby.
-6. Sign the Aptos registry transaction that records the owner listing,
-   metadata URI, and metadata hash.
-7. Wait for Aptos finality and Shelby indexing before the listing is marked
+6. Sign the Aptos owner-listing transaction that records the access policy.
+7. After listing finality, sign the metadata-commitment transaction that
+   records the Shelby URI and SHA-256 hash.
+8. Wait for Aptos finality and Shelby indexing before the listing is marked
    complete.
-8. Share the public media or creator URL.
+9. Share the public media or creator URL.
 
 ### Buyer flow
 
@@ -106,6 +107,13 @@ registry is built against the selected fullnode and submitted only after the
 wallet/network preflight passes. The application also checks the live fullnode
 chain ID before opening a publish or registry retry prompt, so a stale wallet
 network cannot silently create an invalid transaction.
+
+Owner-scoped listing, metadata, purchase, and listing-sales indexes use flat
+Move table keys such as `(owner, blob_name)`. This preserves creator namespace
+isolation without nested tables, which the Shelbynet transaction simulator
+cannot evaluate reliably. Listing and metadata writes are separate,
+idempotent transactions so a rejected second approval can be retried without
+re-uploading media to Shelby.
 
 ## Networks
 
@@ -161,6 +169,7 @@ The registry exposes entry functions for:
 - `initialize`
 - `upsert_listing`
 - `upsert_listing_with_metadata`
+- `upsert_listing_for_owner`
 - `upsert_listing_for_owner_with_metadata`
 - `upsert_listing_metadata`
 - `upsert_listing_metadata_for_owner`

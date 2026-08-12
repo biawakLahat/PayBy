@@ -31,7 +31,10 @@ import type {
   RepublishDraft,
 } from "../../domain/models";
 import type { useStoredMetadata } from "../../hooks/useStoredMetadata";
-import { waitForTransaction } from "../../services/aptos/fullnode";
+import {
+  signAndSubmitEntryFunction,
+  waitForTransaction,
+} from "../../services/aptos/fullnode";
 import {
   getAccountAddress,
   isWalletNetworkAligned,
@@ -39,6 +42,8 @@ import {
   walletNetworkMismatchMessage,
 } from "../../services/aptos/wallet";
 import {
+  buildOwnerListingTransactionData,
+  buildOwnerRegistryTransactionPlan,
   marketplaceFunction,
   policyIdToAccessMode,
   readChainListing,
@@ -67,51 +72,7 @@ type BlobLike = {
 };
 
 const REPUBLISH_DRAFT_KEY = "payby-republish-draft-v1";
-const ZERO_ADDRESS =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
-const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
-  free: 0,
-  allowlist: 1,
-  paid: 2,
-  nft: 3,
-  subscription: 4,
-};
 const formatter = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
-
-function getTransactionHash(response: unknown) {
-  if (
-    response &&
-    typeof response === "object" &&
-    "hash" in response &&
-    typeof response.hash === "string"
-  ) {
-    return response.hash;
-  }
-  return "";
-}
-
-function parseAllowlistAddresses(value: string) {
-  return value
-    .split(/[,\n\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function parseAssetUnits(value: string) {
-  const normalized = value.trim();
-  if (!normalized) return 0;
-  const parsed = Number(normalized);
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.round(parsed * 100_000_000);
-}
-
-function getPaymentAssetAddress(
-  selectedNetwork: PaybyNetwork,
-  currency: "APT" | "SHELBYUSD",
-) {
-  const network = PAYBY_NETWORKS[selectedNetwork];
-  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
-}
 
 function userFacingError(error: unknown, fallback: string) {
   const raw = error instanceof Error ? error.message : "";
@@ -122,6 +83,13 @@ function userFacingError(error: unknown, fallback: string) {
   }
   if (lower.includes("insufficient") || lower.includes("balance")) {
     return "Wallet balance is not enough for this transaction.";
+  }
+  if (
+    lower.includes("gateway timeout") ||
+    lower.includes("upstream request timeout") ||
+    lower.includes("status: 504")
+  ) {
+    return "Shelbynet did not complete the Aptos preflight in time. No registry transaction was submitted; retry after the RPC recovers.";
   }
   if (lower.includes("simulation") || lower.includes("vmstatus")) {
     return "Aptos rejected the transaction during validation. Check network, balance, and listing state.";
@@ -221,6 +189,7 @@ export function MediaDetailPage({
     network: walletNetwork,
     changeNetwork,
     signAndSubmitTransaction,
+    signTransaction,
   } = useWallet();
   const [actionMessage, setActionMessage] = React.useState("");
   const walletNetworkAligned = isWalletNetworkAligned(
@@ -358,38 +327,43 @@ export function MediaDetailPage({
       });
       return;
     }
-    const functionId = marketplaceFunction(
+    const listingFunctionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_for_owner_with_metadata",
+      "upsert_listing_for_owner",
     );
-    if (!functionId) {
+    const metadataFunctionId = marketplaceFunction(
+      selectedNetwork,
+      "upsert_listing_metadata_for_owner",
+    );
+    if (!listingFunctionId || !metadataFunctionId) {
       setActionMessage("Payby marketplace contract is not configured.");
       return;
     }
 
     setRegistryRepairing(true);
-    setActionMessage("Submitting access policy repair transaction.");
+    setActionMessage("Preparing the access policy repair transaction.");
     try {
-      const response = await signAndSubmitTransaction({
-        data: {
-          function: functionId,
-          typeArguments: [],
-          functionArguments: [
-            blobName,
-            metadata.title || blobName,
-            ACCESS_POLICY_IDS[metadata.accessMode],
-            parseAssetUnits(metadata.price),
-            getPaymentAssetAddress(selectedNetwork, metadata.currency) ||
-              ZERO_ADDRESS,
-            parseAllowlistAddresses(metadata.allowlist),
-            metadata.metadataUri || "",
-            metadata.metadataHash || "",
-          ],
-        },
+      const transactionPlan = buildOwnerRegistryTransactionPlan(
+        selectedNetwork,
+        metadata,
+      );
+      const listingHash = await signAndSubmitEntryFunction({
+        selectedNetwork,
+        sender: account.address.toString(),
+        signTransaction,
+        data: transactionPlan.listing,
       });
-      const hash = getTransactionHash(response);
-      setActionMessage("Registry repair submitted. Waiting for Aptos finality.");
-      await waitForTransaction(selectedNetwork, hash);
+      setActionMessage("Access policy submitted. Waiting for Aptos finality.");
+      await waitForTransaction(selectedNetwork, listingHash);
+
+      setActionMessage("Access policy finalized. Approve the metadata commitment.");
+      const metadataTransactionHash = await signAndSubmitEntryFunction({
+        selectedNetwork,
+        sender: account.address.toString(),
+        signTransaction,
+        data: transactionPlan.metadata,
+      });
+      await waitForTransaction(selectedNetwork, metadataTransactionHash);
       const listing = await readChainListing(selectedNetwork, owner, blobName);
       setChainListing(listing);
       setChainListingState(listing?.found ? "found" : "missing");
@@ -432,7 +406,7 @@ export function MediaDetailPage({
 
     const functionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_for_owner_with_metadata",
+      "upsert_listing_for_owner",
     );
     if (!functionId) {
       setActionMessage("Payby marketplace contract is not configured.");
@@ -446,24 +420,15 @@ export function MediaDetailPage({
         ...metadata,
         allowlist: allowlistDraft.trim(),
       };
-      const response = await signAndSubmitTransaction({
-        data: {
-          function: functionId,
-          typeArguments: [],
-          functionArguments: [
-            blobName,
-            nextMetadata.title || blobName,
-            ACCESS_POLICY_IDS.allowlist,
-            parseAssetUnits(nextMetadata.price),
-            getPaymentAssetAddress(selectedNetwork, nextMetadata.currency) ||
-              ZERO_ADDRESS,
-            parseAllowlistAddresses(nextMetadata.allowlist),
-            nextMetadata.metadataUri || "",
-            nextMetadata.metadataHash || "",
-          ],
-        },
+      const hash = await signAndSubmitEntryFunction({
+        selectedNetwork,
+        sender: account.address.toString(),
+        signTransaction,
+        data: buildOwnerListingTransactionData(
+          selectedNetwork,
+          nextMetadata,
+        ),
       });
-      const hash = getTransactionHash(response);
       setActionMessage("Allowlist update submitted. Waiting for Aptos finality.");
       await waitForTransaction(selectedNetwork, hash);
       metadataStore.saveMetadata([nextMetadata]);

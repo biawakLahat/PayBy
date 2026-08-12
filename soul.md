@@ -18,6 +18,10 @@ On-chain state is the source of truth where it matters.
 
 Local browser storage may only be used as a recovery/cache layer for user experience. It must not become the canonical source for ownership, access, purchases, creator identity, or revenue.
 
+On-chain data structures must also fit the behavior of the active network. Owner and blob isolation must use flat composite table keys on Shelbynet; nested table values are prohibited because the live simulator can time out before a wallet can approve the transaction.
+
+Registry writes must be resumable. Listing policy and metadata commitment are separate idempotent transactions, and the UI must never report publish success until both have reached Aptos finality.
+
 ## Current Direction
 
 - Gateway is intentionally removed/deferred until Shelby Early Access is granted.

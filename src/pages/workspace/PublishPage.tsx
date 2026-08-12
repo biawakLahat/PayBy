@@ -39,6 +39,7 @@ import {
   walletNetworkMismatchMessage,
 } from "../../services/aptos/wallet";
 import {
+  buildOwnerRegistryTransactionPlan,
   getAccessRegistryBlocker,
   marketplaceFunction,
 } from "../../services/payby/marketplace";
@@ -174,6 +175,13 @@ function userFacingError(error: unknown, fallback: string) {
   }
   if (lower.includes("insufficient") || lower.includes("balance")) {
     return "Wallet balance is not enough for this transaction.";
+  }
+  if (
+    lower.includes("gateway timeout") ||
+    lower.includes("upstream request timeout") ||
+    lower.includes("status: 504")
+  ) {
+    return "Shelbynet did not complete the Aptos preflight in time. No registry transaction was submitted; retry this step after the RPC recovers.";
   }
   if (lower.includes("simulation") || lower.includes("vmstatus")) {
     return "Aptos rejected the transaction during validation. Check network, balance, and listing state.";
@@ -429,11 +437,15 @@ export function PublishPage({
     const registryItems = items;
     if (registryItems.length === 0) return;
 
-    const functionId = marketplaceFunction(
+    const listingFunctionId = marketplaceFunction(
       selectedNetwork,
-      "upsert_listing_for_owner_with_metadata",
+      "upsert_listing_for_owner",
     );
-    if (!functionId || !account) {
+    const metadataFunctionId = marketplaceFunction(
+      selectedNetwork,
+      "upsert_listing_metadata_for_owner",
+    );
+    if (!listingFunctionId || !metadataFunctionId || !account) {
       const message = "The Aptos access registry is not configured for this network.";
       setPublishPhase("error");
       setRegistryRetryItems(registryItems);
@@ -462,63 +474,84 @@ export function PublishPage({
       status: "registry",
     });
     setStatusMessage(
-      `Shelby storage complete. Registering ${registryItems.length} on-chain ${registryItems.length === 1 ? "listing" : "listings"} with metadata commitments.`,
+      `Shelby storage complete. Registering ${registryItems.length} on-chain ${registryItems.length === 1 ? "listing" : "listings"}. Each item requires a listing approval followed by a metadata approval.`,
     );
 
     for (const item of registryItems) {
       let registryHash = "";
       try {
-        const metadataUri = item.metadataUri?.trim();
-        const metadataHash = item.metadataHash?.trim();
-        if (!metadataUri || !metadataHash) {
-          throw new Error(
-            `Metadata commitment is missing for ${item.title || item.blobName}. Retry the publish from the selected file.`,
-          );
-        }
+        const transactionPlan = buildOwnerRegistryTransactionPlan(
+          selectedNetwork,
+          item,
+        );
 
-        const hash = await signAndSubmitEntryFunction({
+        setStatusMessage(
+          `Approve the Aptos listing for ${item.title || item.blobName}.`,
+        );
+        const listingHash = await signAndSubmitEntryFunction({
           selectedNetwork,
           sender: account.address.toString(),
           signTransaction,
-          data: {
-            function: functionId,
-            typeArguments: [],
-            functionArguments: [
-              item.blobName,
-              item.title,
-              ACCESS_POLICY_IDS[item.accessMode],
-              parseAssetUnits(item.price),
-              getPaymentAssetAddress(selectedNetwork, item.currency) ||
-                ZERO_ADDRESS,
-              parseAllowlistAddresses(item.allowlist),
-              metadataUri,
-              metadataHash,
-            ],
-          },
+          data: transactionPlan.listing,
         });
-        if (!hash) {
+        if (!listingHash) {
           throw new Error(
-            "Wallet submitted the access registry request, but no transaction hash was returned.",
+            "Wallet submitted the listing request, but no transaction hash was returned.",
           );
         }
-        registryHash = hash;
-        setTransactionHash(hash);
+        registryHash = listingHash;
+        setTransactionHash(listingHash);
         transactionStore.upsertTransaction({
           id: crypto.randomUUID(),
-          hash,
+          hash: listingHash,
           network: selectedNetwork,
           status: "pending",
-          label: "Payby access registry",
-          detail: `Registering ${item.title} listing and metadata commitment`,
+          label: "Payby listing registry",
+          detail: `Registering the access policy for ${item.title || item.blobName}`,
           owner: item.owner,
           blobNames: [item.blobName],
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
-        await waitForTransaction(selectedNetwork, hash);
-        transactionStore.updateTransaction(hash, {
+        await waitForTransaction(selectedNetwork, listingHash);
+        transactionStore.updateTransaction(listingHash, {
           status: "confirmed",
-          detail: `${item.title} listing and metadata commitment are registered on-chain.`,
+          detail: `${item.title || item.blobName} access policy is registered on-chain.`,
+        });
+        registryHash = "";
+
+        setStatusMessage(
+          `Listing finalized. Approve the metadata commitment for ${item.title || item.blobName}.`,
+        );
+        const metadataTransactionHash = await signAndSubmitEntryFunction({
+          selectedNetwork,
+          sender: account.address.toString(),
+          signTransaction,
+          data: transactionPlan.metadata,
+        });
+        if (!metadataTransactionHash) {
+          throw new Error(
+            "Wallet submitted the metadata request, but no transaction hash was returned.",
+          );
+        }
+        registryHash = metadataTransactionHash;
+        setTransactionHash(metadataTransactionHash);
+        transactionStore.upsertTransaction({
+          id: crypto.randomUUID(),
+          hash: metadataTransactionHash,
+          network: selectedNetwork,
+          status: "pending",
+          label: "Payby metadata commitment",
+          detail: `Committing metadata for ${item.title || item.blobName}`,
+          owner: item.owner,
+          blobNames: [item.blobName],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        await waitForTransaction(selectedNetwork, metadataTransactionHash);
+        transactionStore.updateTransaction(metadataTransactionHash, {
+          status: "confirmed",
+          detail: `${item.title || item.blobName} metadata commitment is registered on-chain.`,
         });
       } catch (error) {
         const message = userFacingError(

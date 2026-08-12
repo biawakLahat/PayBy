@@ -7,10 +7,14 @@ import {
 } from "@shelby-protocol/sdk/browser";
 import { PAYBY_NETWORKS } from "../src/config/networks";
 import {
+  buildOwnerListingTransactionData,
+  buildOwnerMetadataTransactionData,
+  buildOwnerRegistryTransactionPlan,
   getAccessRegistryBlocker,
   metadataFromChainListing,
   policyIdToAccessMode,
 } from "../src/services/payby/marketplace";
+import { assertSuccessfulTransactionSimulation } from "../src/services/aptos/fullnode";
 import {
   encodeBlobPath,
   getShelbyUri,
@@ -104,4 +108,79 @@ test("includes the live Shelbynet location hint in blob registration payloads", 
   });
 
   assert.equal(payload.functionArguments[2], "shelbynet-1");
+});
+
+const registryMedia = {
+  blobName: "creator/media.mov",
+  title: "Creator media",
+  accessMode: "allowlist" as const,
+  price: "0",
+  currency: "APT" as const,
+  allowlist: "0x1, 0x2\n0x3",
+  metadataUri: "  shelby://shelbynet/0xabc/creator/media.json  ",
+  metadataHash: "  abc123  ",
+};
+
+test("builds separate owner listing and metadata registry payloads", () => {
+  const plan = buildOwnerRegistryTransactionPlan("shelbynet", registryMedia);
+
+  assert.match(plan.listing.function, /::upsert_listing_for_owner$/);
+  assert.deepEqual(plan.listing.typeArguments, []);
+  assert.equal(plan.listing.functionArguments?.length, 6);
+  assert.deepEqual(plan.listing.functionArguments?.[5], ["0x1", "0x2", "0x3"]);
+
+  assert.match(
+    plan.metadata.function,
+    /::upsert_listing_metadata_for_owner$/,
+  );
+  assert.deepEqual(plan.metadata.typeArguments, []);
+  assert.deepEqual(plan.metadata.functionArguments, [
+    "creator/media.mov",
+    "shelby://shelbynet/0xabc/creator/media.json",
+    "abc123",
+  ]);
+});
+
+test("rejects incomplete metadata before a registry transaction plan is used", () => {
+  assert.throws(
+    () =>
+      buildOwnerRegistryTransactionPlan("shelbynet", {
+        ...registryMedia,
+        metadataHash: "",
+      }),
+    /metadata commitment is missing/i,
+  );
+});
+
+test("keeps listing-only policy updates independent from metadata", () => {
+  const data = buildOwnerListingTransactionData("shelbynet", {
+    ...registryMedia,
+    metadataUri: undefined,
+    metadataHash: undefined,
+  });
+  assert.match(data.function, /::upsert_listing_for_owner$/);
+  assert.equal(data.functionArguments?.length, 6);
+
+  assert.throws(
+    () =>
+      buildOwnerMetadataTransactionData("shelbynet", {
+        ...registryMedia,
+        metadataUri: undefined,
+      }),
+    /metadata commitment is missing/i,
+  );
+});
+
+test("fails closed when Aptos preflight simulation rejects a payload", () => {
+  assert.doesNotThrow(() =>
+    assertSuccessfulTransactionSimulation({ success: true }),
+  );
+  assert.throws(
+    () =>
+      assertSuccessfulTransactionSimulation({
+        success: false,
+        vm_status: "Move abort in payby_marketplace",
+      }),
+    /Move abort in payby_marketplace/,
+  );
 });

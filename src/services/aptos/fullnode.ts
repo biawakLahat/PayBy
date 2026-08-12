@@ -20,6 +20,17 @@ type TransactionResponse = {
   vm_status?: string;
 };
 
+export function assertSuccessfulTransactionSimulation(
+  simulation?: Pick<TransactionResponse, "success" | "vm_status">,
+) {
+  if (simulation?.success) return;
+
+  throw new Error(
+    simulation?.vm_status ||
+      "Aptos rejected the transaction during preflight simulation.",
+  );
+}
+
 export function fullnodeRequestHeaders(selectedNetwork: PaybyNetwork) {
   const apiKey = PAYBY_NETWORKS[selectedNetwork].aptosApiKey;
   return apiKey ? { authorization: `Bearer ${apiKey}` } : undefined;
@@ -66,6 +77,17 @@ export async function signAndSubmitEntryFunction({
     sender,
     data,
   });
+
+  const [simulation] = await aptos.transaction.simulate.simple({
+    transaction,
+    options: {
+      estimateGasUnitPrice: false,
+      estimateMaxGasAmount: false,
+      estimatePrioritizedGasUnitPrice: false,
+    },
+  });
+  assertSuccessfulTransactionSimulation(simulation);
+
   const signed = await signTransaction({ transactionOrPayload: transaction });
   const submitted = await aptos.transaction.submit.simple({
     transaction,

@@ -1,4 +1,5 @@
 import { PAYBY_NETWORKS, type PaybyNetwork } from "../../config/networks";
+import type { InputEntryFunctionData } from "@aptos-labs/ts-sdk";
 import type {
   AccessMode,
   ChainListing,
@@ -17,6 +18,9 @@ const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
   nft: 3,
   subscription: 4,
 };
+
+const ZERO_ADDRESS =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 const CHAIN_SUPPORTED_ACCESS_MODES = new Set<AccessMode>([
   "free",
@@ -50,6 +54,7 @@ type MarketplaceFunctionName =
   | "upsert_creator_profile_v2"
   | "upsert_listing_metadata"
   | "upsert_listing_metadata_for_owner"
+  | "upsert_listing_for_owner"
   | "upsert_listing_with_metadata"
   | "upsert_listing_for_owner_with_metadata";
 
@@ -61,6 +66,107 @@ export function marketplaceFunction(
   return address
     ? (`${address}::payby_marketplace::${functionName}` as MoveFunctionId)
     : "";
+}
+
+function parseAllowlistAddresses(value: string) {
+  return value
+    .split(/[,\n\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseRegistryAssetUnits(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return 0;
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+
+  return Math.round(parsed * 100_000_000);
+}
+
+function getRegistryPaymentAssetAddress(
+  selectedNetwork: PaybyNetwork,
+  currency: "APT" | "SHELBYUSD",
+) {
+  const network = PAYBY_NETWORKS[selectedNetwork];
+  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
+}
+
+type RegistryMedia = Pick<
+  MediaMetadata,
+  | "blobName"
+  | "title"
+  | "accessMode"
+  | "price"
+  | "currency"
+  | "allowlist"
+  | "metadataUri"
+  | "metadataHash"
+>;
+
+export function buildOwnerListingTransactionData(
+  selectedNetwork: PaybyNetwork,
+  media: RegistryMedia,
+): InputEntryFunctionData {
+  const functionId = marketplaceFunction(
+    selectedNetwork,
+    "upsert_listing_for_owner",
+  );
+  if (!functionId) {
+    throw new Error("The Aptos access registry is not configured for this network.");
+  }
+
+  return {
+    function: functionId,
+    typeArguments: [],
+    functionArguments: [
+      media.blobName,
+      media.title || media.blobName,
+      ACCESS_POLICY_IDS[media.accessMode],
+      parseRegistryAssetUnits(media.price),
+      getRegistryPaymentAssetAddress(selectedNetwork, media.currency) ||
+        ZERO_ADDRESS,
+      parseAllowlistAddresses(media.allowlist),
+    ],
+  };
+}
+
+export function buildOwnerMetadataTransactionData(
+  selectedNetwork: PaybyNetwork,
+  media: RegistryMedia,
+): InputEntryFunctionData {
+  const functionId = marketplaceFunction(
+    selectedNetwork,
+    "upsert_listing_metadata_for_owner",
+  );
+  if (!functionId) {
+    throw new Error("The Aptos metadata registry is not configured for this network.");
+  }
+
+  const metadataUri = media.metadataUri?.trim();
+  const metadataHash = media.metadataHash?.trim();
+  if (!metadataUri || !metadataHash) {
+    throw new Error(
+      `Metadata commitment is missing for ${media.title || media.blobName}. Retry the publish from the selected file.`,
+    );
+  }
+
+  return {
+    function: functionId,
+    typeArguments: [],
+    functionArguments: [media.blobName, metadataUri, metadataHash],
+  };
+}
+
+export function buildOwnerRegistryTransactionPlan(
+  selectedNetwork: PaybyNetwork,
+  media: RegistryMedia,
+) {
+  return {
+    listing: buildOwnerListingTransactionData(selectedNetwork, media),
+    metadata: buildOwnerMetadataTransactionData(selectedNetwork, media),
+  };
 }
 
 export function policyIdToAccessMode(policy: number): AccessMode {
