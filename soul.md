@@ -308,3 +308,8 @@ Payby should feel:
 - Treat creator profile drafts as wallet- and network-scoped recovery data. A connected wallet must never display another wallet's local profile while its on-chain profile is loading.
 - The landing page remains outside this change boundary.
 - The README must not present an outdated product screenshot; its old landing image embed was removed while the live landing implementation and asset remained untouched.
+
+## Continued 12 August 2026 - Shelby Route Identity
+
+- Network status must use the real Shelby brand mark instead of a generic security symbol when the active route is Shelbynet.
+- Reuse the existing Shelby asset so route identity remains visually consistent across the landing infrastructure ledger and workspace controls.

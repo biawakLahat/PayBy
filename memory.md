@@ -474,3 +474,9 @@ Every time Payby progresses, update:
 - `useCreatorProfile` now stores drafts under `payby-creator-profile-v1:<network>:<wallet>`, and the app resets profile state on wallet/network changes. Public pages only use the connected wallet's local profile when the route owner matches that wallet.
 - Verification after the fix: 28 deterministic tests passed, the TypeScript/Vite production build passed, and no landing-page file changed.
 - The old `assets/readme/payby-landing-page.png` embed was removed from README because it no longer represents the current landing page. The asset file and live landing implementation were not modified.
+
+## Shelby Route Identity - 12 August 2026
+
+- The landing infrastructure ledger now uses `assets/readme/shelby.jpg` for both Shelby media-layer identity and the active Shelbynet route, replacing the generic `ShieldCheck` icon only in the current-route row.
+- The production TypeScript and Vite build passes after the logo replacement.
+- The focused route-identity update is tracked for the `main` branch.

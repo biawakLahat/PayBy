@@ -758,7 +758,7 @@ function LandingPage({
             <em>Access records</em>
           </div>
           <div className="is-route">
-            <ShieldCheck size={24} />
+            <img src={shelbyMark} alt="" aria-hidden="true" />
             <span>
               <small>Current route</small>
               <strong>Shelbynet</strong>

@@ -414,3 +414,9 @@ This file tracks what should be done next. Update it whenever Payby makes progre
 - [x] Remove the outdated landing-page screenshot from the GitHub README without changing the live landing page.
 - [ ] Re-publish any existing listing that was originally registered with the wrong payment asset; the old on-chain listing cannot be changed by frontend code without a new registry transaction.
 - [ ] Complete a live two-wallet ShelbyUSD creator/buyer E2E and verify the buyer balance delta is ShelbyUSD, with APT changing only by gas.
+
+## Shelby Route Identity - 12 August 2026
+
+- [x] Replace the generic shield in the landing network ledger's current-route row with the existing Shelby logo asset.
+- [x] Verify the production build.
+- [x] Push the focused update to `main`.
