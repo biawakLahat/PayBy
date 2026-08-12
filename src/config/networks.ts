@@ -2,6 +2,7 @@ import type { AvailableWallets } from "@aptos-labs/wallet-adapter-react";
 import { Network } from "@aptos-labs/ts-sdk";
 
 export type PaybyNetwork = "shelbynet" | "shelby-testnet";
+export type PaymentCurrency = "APT" | "SHELBYUSD";
 
 export type PaybyNetworkConfig = {
   label: string;
@@ -20,7 +21,7 @@ export type PaybyNetworkConfig = {
   contractAddress: string;
   marketplaceContractAddress: string;
   paymentAssetMetadataAddress: string;
-  paymentAssets: Record<"APT" | "SHELBYUSD", string>;
+  paymentAssets: Record<PaymentCurrency, string>;
   explorerNetwork: string;
   permanenceNote: string;
 };
@@ -29,6 +30,12 @@ export type PaybyNetworkConfig = {
 // remain supported so a future redeploy can be selected without a code change.
 const PAYBY_SHELBYNET_MARKETPLACE_ADDRESS =
   "0x962ebbcf81cbc5dc0950a8ca036d54828481043f1df8960a2ec4d50fae8c3a12";
+
+// Shelby documents this fungible-asset metadata object for ShelbyUSD. Keep it
+// separate from the APT fallback so a paid listing can never silently switch
+// payment assets when an environment variable is missing.
+export const SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA =
+  "0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1";
 
 const viteEnv = (import.meta as ImportMeta & {
   env?: Record<string, string | undefined>;
@@ -68,9 +75,7 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
       SHELBYUSD:
         viteEnv.VITE_PAYBY_SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA ||
         viteEnv.VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA ||
-        viteEnv.VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA ||
-        viteEnv.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
-        "",
+        SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA,
     },
     explorerNetwork: "shelbynet",
     permanenceNote: "Primary Shelby route for community publishing and media operations.",
@@ -105,8 +110,6 @@ export const PAYBY_NETWORKS: Record<PaybyNetwork, PaybyNetworkConfig> = {
       SHELBYUSD:
         viteEnv.VITE_PAYBY_TESTNET_SHELBYUSD_PAYMENT_ASSET_METADATA ||
         viteEnv.VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA ||
-        viteEnv.VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA ||
-        viteEnv.VITE_PAYBY_PAYMENT_ASSET_METADATA ||
         "",
     },
     explorerNetwork: "testnet",

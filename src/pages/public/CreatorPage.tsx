@@ -13,11 +13,23 @@ import { accessModeLabel, createMediaKey, formatAssetUnits, shortenAddress } fro
 import { EmptyState } from "../../components/EmptyState";
 import { PaybyLogo } from "../../components/PaybyLogo";
 import type { AppRoute } from "../../app/router";
+
+const DEFAULT_PUBLIC_PROFILE: CreatorProfile = {
+  displayName: "Payby Creator",
+  handle: "payby",
+  bio: "Creator media published through Shelby and Aptos.",
+  avatarUrl: "",
+  website: "",
+  xHandle: "",
+  xVerified: false,
+};
+
 export function CreatorPage({
   route,
   selectedNetwork,
   metadataStore,
   fallbackProfile,
+  fallbackProfileOwner,
   onOpenApp,
   onNavigate,
   walletControl,
@@ -27,6 +39,7 @@ export function CreatorPage({
   selectedNetwork: PaybyNetwork;
   metadataStore: ReturnType<typeof useStoredMetadata>;
   fallbackProfile: CreatorProfile;
+  fallbackProfileOwner: string;
   onOpenApp: () => void;
   onNavigate: (route: AppRoute) => void;
   walletControl: React.ReactNode;
@@ -38,12 +51,17 @@ export function CreatorPage({
   ) => Promise<MediaMetadata | null>;
 }) {
   const owner = route.owner ?? "";
+  const fallback =
+    owner && fallbackProfileOwner &&
+    owner.toLowerCase() === fallbackProfileOwner.toLowerCase()
+      ? fallbackProfile
+      : DEFAULT_PUBLIC_PROFILE;
   const [profile, setProfile] = React.useState<CreatorProfile>({
-    displayName: fallbackProfile.displayName || "Payby Creator",
-    handle: fallbackProfile.handle || "payby",
-    bio: fallbackProfile.bio || "Creator media published through Shelby and Aptos.",
-    avatarUrl: fallbackProfile.avatarUrl || "",
-    website: fallbackProfile.website || "",
+    displayName: fallback.displayName || "Payby Creator",
+    handle: fallback.handle || "payby",
+    bio: fallback.bio || "Creator media published through Shelby and Aptos.",
+    avatarUrl: fallback.avatarUrl || "",
+    website: fallback.website || "",
   });
   const [items, setItems] = React.useState<MediaMetadata[]>([]);
   const [loadState, setLoadState] = React.useState<
@@ -70,7 +88,7 @@ export function CreatorPage({
     ])
       .then(async ([chainProfile, listings, sales]) => {
         if (cancelled) return;
-        if (chainProfile) setProfile(chainProfile);
+        setProfile(chainProfile ?? fallback);
         if (sales) setCreatorSales(sales);
 
         const recovered = (
@@ -104,7 +122,7 @@ export function CreatorPage({
     return () => {
       cancelled = true;
     };
-  }, [owner, selectedNetwork, storedMetadata]);
+  }, [fallback, fallbackProfileOwner, owner, selectedNetwork, storedMetadata]);
 
   return (
     <main className="public-page creator-public-page">

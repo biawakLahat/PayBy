@@ -187,6 +187,7 @@ export function ProfilePage({
     }
 
     let cancelled = false;
+    setChainProfile(null);
     void readCreatorProfile(selectedNetwork, accountAddress)
       .then((nextProfile) => {
         if (cancelled) return;

@@ -10,11 +10,15 @@ import {
   buildOwnerListingTransactionData,
   buildOwnerMetadataTransactionData,
   buildOwnerRegistryTransactionPlan,
+  getPaymentAssetAddress,
   getAccessRegistryBlocker,
+  paymentAssetMatches,
   metadataFromChainListing,
+  paymentCurrencyForAddress,
   policyIdToAccessMode,
 } from "../src/services/payby/marketplace";
 import { assertSuccessfulTransactionSimulation } from "../src/services/aptos/fullnode";
+import { getCreatorProfileStorageKey } from "../src/hooks/useCreatorProfile";
 import {
   encodeBlobPath,
   getShelbyUri,
@@ -48,6 +52,39 @@ test("recovers a usable media record from a chain listing", () => {
   assert.equal(metadata.accessMode, "paid");
   assert.equal(metadata.price, "1.5");
   assert.deepEqual(metadata.tags, ["on-chain"]);
+  assert.equal(metadata.currency, "APT");
+});
+
+test("keeps ShelbyUSD listings on the ShelbyUSD asset and never falls back to APT", () => {
+  const shelbyUsd = getPaymentAssetAddress("shelbynet", "SHELBYUSD");
+  const apt = getPaymentAssetAddress("shelbynet", "APT");
+  assert.ok(shelbyUsd);
+  assert.notEqual(shelbyUsd, apt);
+  assert.equal(
+    paymentCurrencyForAddress("shelbynet", shelbyUsd),
+    "SHELBYUSD",
+  );
+  assert.equal(
+    paymentAssetMatches("shelbynet", `0x${shelbyUsd.slice(2).padStart(64, "0")}`, "SHELBYUSD"),
+    true,
+  );
+});
+
+test("scopes creator profile drafts by wallet and network", () => {
+  const walletA = "0xABCDEF";
+  const walletB = "0x123456";
+  assert.equal(
+    getCreatorProfileStorageKey(walletA, "shelbynet"),
+    "payby-creator-profile-v1:shelbynet:0xabcdef",
+  );
+  assert.notEqual(
+    getCreatorProfileStorageKey(walletA, "shelbynet"),
+    getCreatorProfileStorageKey(walletB, "shelbynet"),
+  );
+  assert.notEqual(
+    getCreatorProfileStorageKey(walletA, "shelbynet"),
+    getCreatorProfileStorageKey(walletA, "shelby-testnet"),
+  );
 });
 
 test("blocks access policies that the current contract cannot enforce", () => {

@@ -26,8 +26,6 @@
   &nbsp; Aptos on-chain registry
 </p>
 
-![Payby landing page](assets/readme/payby-landing-page.png)
-
 ## Overview
 
 Payby is a Web3-native creator media vault for publishing premium media,
@@ -200,6 +198,18 @@ The paid purchase path transfers the configured fungible asset through Aptos
 and records a buyer purchase index, receipt record, creator sale count, and
 listing-level sale summary.
 
+Payment assets are route- and currency-specific. Payby never uses the generic
+APT metadata address as a ShelbyUSD fallback: a ShelbyUSD listing must carry
+the ShelbyUSD metadata object on-chain, and a buyer transaction is stopped when
+the committed currency and the listing payment asset disagree. The current
+Shelbynet ShelbyUSD metadata object is
+`0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1`, matching
+the asset shown in the [Shelby account balance documentation](https://docs.shelby.xyz/tools/cli/commands/account-management).
+
+Creator profile drafts are browser recovery data keyed by network and wallet
+address. The public profile remains sourced from the Aptos Move registry; a
+wallet cannot inherit another wallet's local profile draft.
+
 ## Application Routes
 
 | Route | Surface |
@@ -336,7 +346,7 @@ VITE_PAYBY_SHELBYUSD_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_SHELBYNET_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_TESTNET_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_SHELBYNET_APT_PAYMENT_ASSET_METADATA=
-VITE_PAYBY_SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA=
+VITE_PAYBY_SHELBYNET_SHELBYUSD_PAYMENT_ASSET_METADATA=0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1
 VITE_PAYBY_TESTNET_APT_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_TESTNET_SHELBYUSD_PAYMENT_ASSET_METADATA=
 ```

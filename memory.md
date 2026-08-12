@@ -465,3 +465,12 @@ Every time Payby progresses, update:
 - Rewrote `README.md` to describe the actual Payby product, Shelby storage boundary, Aptos Move registry, wallet-scoped buyer and creator flows, routes, repository layout, environment configuration, deployment, security boundaries, and release gates.
 - README explicitly avoids claiming community-ready status before funded creator/buyer E2E, Shelby Testnet Early Access validation, post-wipe checks, and browser wallet QA are complete.
 - README records the current Shelbynet marketplace deployment as a route-scoped prototype address and warns that Shelbynet can be wiped.
+
+## Payment Asset and Profile Isolation - 12 August 2026
+
+- Root cause of the ShelbyUSD payment bug: the frontend used a generic payment asset fallback, and the active `.env` generic payment address was APT. A ShelbyUSD listing could therefore be registered with APT while its metadata still said ShelbyUSD.
+- The Shelbynet ShelbyUSD metadata object is now explicit: `0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1`. The registry builder selects only the requested currency's asset.
+- `MediaPage` compares the listing's on-chain `payment_metadata` to the expected asset and fails closed before opening Petra when they disagree. Existing incorrect listings must be re-published or updated by the creator.
+- `useCreatorProfile` now stores drafts under `payby-creator-profile-v1:<network>:<wallet>`, and the app resets profile state on wallet/network changes. Public pages only use the connected wallet's local profile when the route owner matches that wallet.
+- Verification after the fix: 28 deterministic tests passed, the TypeScript/Vite production build passed, and no landing-page file changed.
+- The old `assets/readme/payby-landing-page.png` embed was removed from README because it no longer represents the current landing page. The asset file and live landing implementation were not modified.

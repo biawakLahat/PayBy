@@ -300,3 +300,11 @@ Payby should feel:
 
 - README is now written as an implementation and review document rather than a feature list: it explains the product model, canonical data boundaries, Shelby/Aptos integration, route map, Move surface, setup, deployment, security, and release gates.
 - The documentation distinguishes verified implementation from unverified wallet E2E and Early Access work, and preserves the landing-page boundary.
+
+## Continued 12 August 2026 - Payment Asset and Wallet Identity Isolation
+
+- Treat payment currency as an on-chain contract invariant: APT and ShelbyUSD must resolve to separate metadata addresses on every supported route.
+- Never let a missing ShelbyUSD configuration fall back to the generic APT metadata address. A mismatched listing must stop the buyer flow before a wallet prompt.
+- Treat creator profile drafts as wallet- and network-scoped recovery data. A connected wallet must never display another wallet's local profile while its on-chain profile is loading.
+- The landing page remains outside this change boundary.
+- The README must not present an outdated product screenshot; its old landing image embed was removed while the live landing implementation and asset remained untouched.

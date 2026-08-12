@@ -31,6 +31,9 @@ import { getAccountAddress } from "../../services/aptos/wallet";
 import { waitForTransaction } from "../../services/aptos/fullnode";
 import {
   marketplaceFunction,
+  getPaymentAssetAddress,
+  paymentAssetMatches,
+  paymentCurrencyForAddress,
   policyIdToAccessMode,
   readChainAccess,
   readChainListing,
@@ -129,6 +132,16 @@ function accessModeDetail(mode?: MediaMetadata["accessMode"]) {
   return "This policy needs a verifier before Payby can unlock the media.";
 }
 
+const DEFAULT_PUBLIC_PROFILE: CreatorProfile = {
+  displayName: "Payby Creator",
+  handle: "payby",
+  bio: "Creator media published through Shelby and Aptos.",
+  avatarUrl: "",
+  website: "",
+  xHandle: "",
+  xVerified: false,
+};
+
 export function MediaPage({
   route,
   selectedNetwork,
@@ -136,6 +149,7 @@ export function MediaPage({
   purchaseStore,
   transactionStore,
   profile,
+  profileOwner,
   onOpenApp,
   walletControl,
   resolveCommittedMetadata,
@@ -147,6 +161,7 @@ export function MediaPage({
   purchaseStore: ReturnType<typeof usePurchaseReceipts>;
   transactionStore: ReturnType<typeof useTransactionHistory>;
   profile: CreatorProfile;
+  profileOwner: string;
   onOpenApp: () => void;
   walletControl: React.ReactNode;
   resolveCommittedMetadata: (
@@ -160,11 +175,16 @@ export function MediaPage({
   const { account, connected, signAndSubmitTransaction } = useWallet();
   const owner = route.owner ?? "";
   const blobName = route.blobName ?? "";
+  const isViewerProfile =
+    Boolean(owner && profileOwner) &&
+    owner.toLowerCase() === profileOwner.toLowerCase();
+  const fallbackPublicProfile = isViewerProfile ? profile : DEFAULT_PUBLIC_PROFILE;
   const cachedMetadata = metadataStore.metadata[createMediaKey(owner, blobName)];
   const [committedMetadata, setCommittedMetadata] =
     React.useState<MediaMetadata | null>(null);
   const metadata = committedMetadata ?? cachedMetadata;
-  const [publicProfile, setPublicProfile] = React.useState(profile);
+  const [publicProfile, setPublicProfile] =
+    React.useState(fallbackPublicProfile);
   const [unlockState, setUnlockState] = React.useState<UnlockState>("idle");
   const [accessToken, setAccessToken] = React.useState("");
   const [unlockMessage, setUnlockMessage] = React.useState("");
@@ -193,6 +213,18 @@ export function MediaPage({
   const effectiveAccessMode = chainListing?.found
     ? policyIdToAccessMode(chainListing.policy)
     : metadata?.accessMode;
+  const chainCurrency = chainListing?.found
+    ? paymentCurrencyForAddress(selectedNetwork, chainListing.paymentMetadata)
+    : undefined;
+  const effectiveCurrency = metadata?.currency ?? chainCurrency ?? "APT";
+  const paymentAssetMismatch = Boolean(
+    chainListing?.found &&
+      !paymentAssetMatches(
+        selectedNetwork,
+        chainListing.paymentMetadata,
+        effectiveCurrency,
+      ),
+  );
   const isLocked = effectiveAccessMode
     ? effectiveAccessMode !== "free"
     : isRestrictedMedia(metadata);
@@ -202,9 +234,9 @@ export function MediaPage({
       : metadata?.title || blobName;
   const effectivePrice =
     chainListing?.found && chainListing.price !== "0"
-      ? formatAssetUnits(chainListing.price, metadata?.currency ?? "APT")
+      ? formatAssetUnits(chainListing.price, effectiveCurrency)
       : metadata?.price
-        ? `${metadata.price} ${metadata.currency}`
+        ? `${metadata.price} ${effectiveCurrency}`
         : "";
   const unlockElapsed = useElapsedSeconds(
     unlockState === "signing",
@@ -273,23 +305,23 @@ export function MediaPage({
 
   React.useEffect(() => {
     if (!owner || !marketplaceConfigured) {
-      setPublicProfile(profile);
+      setPublicProfile(fallbackPublicProfile);
       return;
     }
 
     let cancelled = false;
     void readCreatorProfile(selectedNetwork, owner)
       .then((nextProfile) => {
-        if (!cancelled) setPublicProfile(nextProfile ?? profile);
+        if (!cancelled) setPublicProfile(nextProfile ?? fallbackPublicProfile);
       })
       .catch(() => {
-        if (!cancelled) setPublicProfile(profile);
+        if (!cancelled) setPublicProfile(fallbackPublicProfile);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [marketplaceConfigured, owner, profile, selectedNetwork]);
+  }, [fallbackPublicProfile, marketplaceConfigured, owner, profileOwner, selectedNetwork]);
 
   React.useEffect(() => {
     if (!chainListing?.found || !chainListing.metadataUri || !chainListing.metadataHash) {
@@ -369,6 +401,29 @@ export function MediaPage({
       throw new Error("Payby marketplace contract is not configured.");
     }
 
+    if (paymentAssetMismatch) {
+      throw new Error(
+        `This listing's on-chain payment asset does not match its metadata. Re-publish the listing with ${effectiveCurrency} before purchasing.`,
+      );
+    }
+
+    const expectedPaymentAsset = getPaymentAssetAddress(
+      selectedNetwork,
+      effectiveCurrency,
+    );
+    if (
+      !expectedPaymentAsset ||
+      !paymentAssetMatches(
+        selectedNetwork,
+        chainListing?.paymentMetadata ?? "",
+        effectiveCurrency,
+      )
+    ) {
+      throw new Error(
+        `This listing is configured with a different payment asset. The creator must update the listing to use ${effectiveCurrency}.`,
+      );
+    }
+
     setUnlockMessage("Confirm the paid unlock transaction in your wallet.");
     const response = await signAndSubmitTransaction({
       data: {
@@ -422,7 +477,7 @@ export function MediaPage({
         chainListing?.found && chainListing.price !== "0"
           ? chainListing.price
           : metadata?.price ?? "0",
-      currency: metadata?.currency ?? "APT",
+      currency: effectiveCurrency,
       confirmedAt: Date.now(),
     };
     setPurchaseReceipt(receipt);

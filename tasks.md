@@ -399,3 +399,18 @@ This file tracks what should be done next. Update it whenever Payby makes progre
 - [x] Separate implemented behavior from funded wallet E2E and Early Access release gates.
 - [x] Document security boundaries, cache limitations, deployment workflow, and contribution checks.
 - [ ] Keep README status current after the first successful funded creator and buyer E2E run.
+
+## Payment Asset and Profile Isolation - 12 August 2026
+
+- [x] Separate Shelbynet APT and ShelbyUSD metadata configuration so ShelbyUSD cannot fall back to APT.
+- [x] Use the documented Shelbynet ShelbyUSD metadata object in the route configuration and `.env.example`.
+- [x] Derive currency from on-chain `payment_metadata` when recovering listings.
+- [x] Stop paid unlock before Petra when listing metadata and on-chain payment asset disagree.
+- [x] Scope creator profile drafts by network and connected wallet address.
+- [x] Clear stale chain profile state and reset the profile page when wallet or network changes.
+- [x] Prevent public creator/media fallback UI from showing the connected wallet's profile for another owner.
+- [x] Add regression coverage for ShelbyUSD asset matching and wallet/network profile keys.
+- [x] Verify 28 deterministic tests, production build, and landing-file boundary.
+- [x] Remove the outdated landing-page screenshot from the GitHub README without changing the live landing page.
+- [ ] Re-publish any existing listing that was originally registered with the wrong payment asset; the old on-chain listing cannot be changed by frontend code without a new registry transaction.
+- [ ] Complete a live two-wallet ShelbyUSD creator/buyer E2E and verify the buyer balance delta is ShelbyUSD, with APT changing only by gas.

@@ -421,7 +421,7 @@ function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
   const wallet = useWallet();
   const accountAddress = getAccountAddress(wallet.account);
   const metadataStore = useStoredMetadata();
-  const profileStore = useCreatorProfile();
+  const profileStore = useCreatorProfile(accountAddress, selectedNetwork);
   const activityFeed = useActivityFeed(accountAddress, selectedNetwork);
   const pendingPublishStore = usePendingPublishes();
   const transactionStore = useTransactionHistory(accountAddress, selectedNetwork);
@@ -459,6 +459,7 @@ function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
           purchaseStore={purchaseStore}
           transactionStore={transactionStore}
           profile={profileStore.profile}
+          profileOwner={accountAddress}
           onOpenApp={() => navigate({ name: "vault" })}
           walletControl={<WalletControl />}
           resolveCommittedMetadata={fetchCommittedMetadata}
@@ -476,6 +477,7 @@ function App({ selectedNetwork, onNetworkChange, shelbyClient }: AppProps) {
           selectedNetwork={selectedNetwork}
           metadataStore={metadataStore}
           fallbackProfile={profileStore.profile}
+          fallbackProfileOwner={accountAddress}
           onOpenApp={() => navigate({ name: "vault" })}
           onNavigate={navigate}
           walletControl={<WalletControl />}
@@ -959,11 +961,16 @@ function VaultApp({
           ) : null}
       {currentView === "profile" ? (
             <ProfilePage
+              key={`profile-${selectedNetwork}-${accountAddress.toLowerCase() || "disconnected"}`}
               profile={profileStore.profile}
               saveProfile={profileStore.saveProfile}
               accountAddress={accountAddress}
               selectedNetwork={selectedNetwork}
-              mediaCount={Object.keys(metadataStore.metadata).length}
+              mediaCount={Object.values(metadataStore.metadata).filter(
+                (item) =>
+                  item.network === selectedNetwork &&
+                  item.owner.toLowerCase() === accountAddress.toLowerCase(),
+              ).length}
               onNavigate={onNavigate}
               addActivity={activityFeed.addActivity}
             />

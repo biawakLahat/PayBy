@@ -41,6 +41,7 @@ import {
 import {
   buildOwnerRegistryTransactionPlan,
   getAccessRegistryBlocker,
+  getPaymentAssetAddress,
   marketplaceFunction,
 } from "../../services/payby/marketplace";
 import { getShelbyUri } from "../../services/shelby/storage";
@@ -156,14 +157,6 @@ function parseAssetUnits(value: string) {
   const parsed = Number(normalized);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
   return Math.round(parsed * 100_000_000);
-}
-
-function getPaymentAssetAddress(
-  selectedNetwork: PaybyNetwork,
-  currency: "APT" | "SHELBYUSD",
-) {
-  const network = PAYBY_NETWORKS[selectedNetwork];
-  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
 }
 
 function userFacingError(error: unknown, fallback: string) {

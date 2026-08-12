@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { PaybyNetwork } from "../config/networks";
 import type { CreatorProfile } from "../domain/models";
 import {
   readLocalJson,
@@ -17,15 +18,41 @@ const DEFAULT_PROFILE: CreatorProfile = {
   xVerified: false,
 };
 
-export function useCreatorProfile() {
-  const [profile, setProfile] = React.useState<CreatorProfile>(() =>
-    readLocalJson(PROFILE_KEY, DEFAULT_PROFILE),
+export function getCreatorProfileStorageKey(
+  accountAddress: string,
+  network: PaybyNetwork,
+) {
+  const owner = accountAddress.trim().toLowerCase() || "disconnected";
+  return `${PROFILE_KEY}:${network}:${owner}`;
+}
+
+export function useCreatorProfile(
+  accountAddress = "",
+  network: PaybyNetwork = "shelbynet",
+) {
+  const storageKey = React.useMemo(
+    () => getCreatorProfileStorageKey(accountAddress, network),
+    [accountAddress, network],
   );
+  const [profileState, setProfileState] = React.useState(() => ({
+    key: storageKey,
+    profile: readLocalJson(storageKey, DEFAULT_PROFILE),
+  }));
+
+  React.useEffect(() => {
+    setProfileState({
+      key: storageKey,
+      profile: readLocalJson(storageKey, DEFAULT_PROFILE),
+    });
+  }, [storageKey]);
 
   const saveProfile = React.useCallback((next: CreatorProfile) => {
-    setProfile(next);
-    writeLocalJson(PROFILE_KEY, next);
-  }, []);
+    setProfileState({ key: storageKey, profile: next });
+    writeLocalJson(storageKey, next);
+  }, [storageKey]);
 
-  return { profile, saveProfile };
+  return {
+    profile: profileState.key === storageKey ? profileState.profile : DEFAULT_PROFILE,
+    saveProfile,
+  };
 }

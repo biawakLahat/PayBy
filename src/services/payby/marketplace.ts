@@ -1,4 +1,8 @@
-import { PAYBY_NETWORKS, type PaybyNetwork } from "../../config/networks";
+import {
+  PAYBY_NETWORKS,
+  type PaybyNetwork,
+  type PaymentCurrency,
+} from "../../config/networks";
 import type { InputEntryFunctionData } from "@aptos-labs/ts-sdk";
 import type {
   AccessMode,
@@ -21,6 +25,11 @@ const ACCESS_POLICY_IDS: Record<AccessMode, number> = {
 
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+function canonicalAddress(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return normalized.replace(/^0x0+(?=[0-9a-f])/, "0x");
+}
 
 const CHAIN_SUPPORTED_ACCESS_MODES = new Set<AccessMode>([
   "free",
@@ -87,10 +96,42 @@ function parseRegistryAssetUnits(value: string) {
 
 function getRegistryPaymentAssetAddress(
   selectedNetwork: PaybyNetwork,
-  currency: "APT" | "SHELBYUSD",
+  currency: PaymentCurrency,
 ) {
-  const network = PAYBY_NETWORKS[selectedNetwork];
-  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
+  return PAYBY_NETWORKS[selectedNetwork].paymentAssets[currency];
+}
+
+export function getPaymentAssetAddress(
+  selectedNetwork: PaybyNetwork,
+  currency: PaymentCurrency,
+) {
+  return PAYBY_NETWORKS[selectedNetwork].paymentAssets[currency];
+}
+
+export function paymentCurrencyForAddress(
+  selectedNetwork: PaybyNetwork,
+  paymentMetadata: string,
+  fallback: PaymentCurrency = "APT",
+): PaymentCurrency {
+  const normalized = canonicalAddress(paymentMetadata);
+  const assets = PAYBY_NETWORKS[selectedNetwork].paymentAssets;
+  if (normalized && normalized === canonicalAddress(assets.SHELBYUSD)) {
+    return "SHELBYUSD";
+  }
+  if (normalized && normalized === canonicalAddress(assets.APT)) {
+    return "APT";
+  }
+  return fallback;
+}
+
+export function paymentAssetMatches(
+  selectedNetwork: PaybyNetwork,
+  paymentMetadata: string,
+  currency: PaymentCurrency,
+) {
+  const expected = PAYBY_NETWORKS[selectedNetwork].paymentAssets[currency];
+  return Boolean(expected) &&
+    canonicalAddress(paymentMetadata) === canonicalAddress(expected);
 }
 
 type RegistryMedia = Pick<
@@ -125,8 +166,7 @@ export function buildOwnerListingTransactionData(
       media.title || media.blobName,
       ACCESS_POLICY_IDS[media.accessMode],
       parseRegistryAssetUnits(media.price),
-      getRegistryPaymentAssetAddress(selectedNetwork, media.currency) ||
-        ZERO_ADDRESS,
+      getRegistryPaymentAssetAddress(selectedNetwork, media.currency) || ZERO_ADDRESS,
       parseAllowlistAddresses(media.allowlist),
     ],
   };
@@ -607,7 +647,10 @@ export function metadataFromChainListing(
     visibility: "unlisted",
     accessMode,
     price: listing.price === "0" ? "" : listing.price,
-    currency: "APT",
+    currency: paymentCurrencyForAddress(
+      selectedNetwork,
+      listing.paymentMetadata,
+    ),
     allowlist: "",
     createdAt: Date.now(),
   };
@@ -623,19 +666,11 @@ function parseAssetUnits(value: string) {
   return Math.round(parsed * 100_000_000);
 }
 
-function getPaymentAssetAddress(
-  selectedNetwork: PaybyNetwork,
-  currency: "APT" | "SHELBYUSD",
-) {
-  const network = PAYBY_NETWORKS[selectedNetwork];
-  return network.paymentAssets[currency] || network.paymentAssetMetadataAddress;
-}
-
 export function getAccessRegistryBlocker(
   selectedNetwork: PaybyNetwork,
   accessMode: AccessMode,
   price = "",
-  currency: "APT" | "SHELBYUSD" = "APT",
+  currency: PaymentCurrency = "APT",
 ) {
   const network = PAYBY_NETWORKS[selectedNetwork];
   if (!CHAIN_SUPPORTED_ACCESS_MODES.has(accessMode)) {
