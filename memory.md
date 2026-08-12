@@ -446,3 +446,9 @@ Every time Payby progresses, update:
 - Payby's fullnode builder now uses `Network.SHELBYNET` with the configured Shelbynet endpoint. `PublishPage` checks the wallet-reported chain ID against the live fullnode before any Shelby upload or registry prompt.
 - A mismatched wallet now fails closed with an actionable message instead of opening a Petra request that cannot be approved.
 - The remaining external gate is a Petra update or a wallet network profile that reports chain ID `118`, followed by a funded browser publish and finality check.
+
+## Repository Documentation Refresh - 12 August 2026
+
+- Rewrote `README.md` to describe the actual Payby product, Shelby storage boundary, Aptos Move registry, wallet-scoped buyer and creator flows, routes, repository layout, environment configuration, deployment, security boundaries, and release gates.
+- README explicitly avoids claiming community-ready status before funded creator/buyer E2E, Shelby Testnet Early Access validation, post-wipe checks, and browser wallet QA are complete.
+- README records the current Shelbynet marketplace deployment as a route-scoped prototype address and warns that Shelbynet can be wiped.

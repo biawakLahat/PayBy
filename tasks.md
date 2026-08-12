@@ -378,3 +378,11 @@ This file tracks what should be done next. Update it whenever Payby makes progre
 - [x] Add a regression test for wallet chain-ID extraction and the actionable mismatch message.
 - [ ] Update Petra or configure a wallet network profile that reports live Shelbynet chain ID `118`.
 - [ ] Retry a funded browser publish and verify sign, submit, finality, and retrieval end to end.
+
+## Repository Documentation Refresh - 12 August 2026
+
+- [x] Rewrite `README.md` around the implemented Shelby and Aptos architecture.
+- [x] Document the real application routes, Move entry/view functions, network endpoints, environment variables, and repository layout.
+- [x] Separate implemented behavior from funded wallet E2E and Early Access release gates.
+- [x] Document security boundaries, cache limitations, deployment workflow, and contribution checks.
+- [ ] Keep README status current after the first successful funded creator and buyer E2E run.

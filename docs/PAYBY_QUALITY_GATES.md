@@ -23,7 +23,7 @@ npm.cmd run check:readiness
 
 ## Current Results - 12 August 2026
 
-- Unit suite: 19 tests passed.
+- Unit suite: 22 tests passed.
 - TypeScript and Vite production build: passed.
 - Landing boundary: unchanged and not included in workspace refactor edits.
 - Shelby Testnet readiness: marketplace views callable and payment asset configured.
@@ -47,7 +47,7 @@ Readiness is now green for both configured network routes. Community release sti
 
 ## Verification After Deployment Guard Update - 12 August 2026
 
-- `npm.cmd run test`: 19 tests passed.
+- `npm.cmd run test`: 22 tests passed.
 - `npm.cmd run build`: passed; the existing `AppRuntime` chunk warning remains.
 - `npm.cmd run check:readiness`: was correctly non-zero before deployment because the old Shelbynet address was not deployed.
 - PowerShell script parse: passed. Missing signer, non-Payby profile, and unloaded workspace-only profile checks fail before any chain command is submitted.
@@ -81,4 +81,4 @@ Readiness is now green for both configured network routes. Community release sti
 - The live Shelbynet marketplace address is included as a public frontend fallback, while Vite environment values remain the override for future redeployments.
 - The Shelbynet indexer display route is `https://api.shelbynet.shelby.xyz/v1/graphql`.
 - The local signer deployment path uses the Aptos TypeScript SDK; the CLI profile path remains available and rejects non-Payby profiles.
-- Final local gates passed: 19 tests, production build, Shelbynet/Testnet readiness, and whitespace audit. Landing files remained unchanged.
+- Final local gates passed: 22 tests, production build, Shelbynet/Testnet readiness, and whitespace audit. Landing files remained unchanged.

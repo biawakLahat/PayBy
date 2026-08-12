@@ -291,3 +291,8 @@ Payby should feel:
 - Petra's raw sign-only route still performs its own simulation, so the earlier claim that raw signing bypassed Petra simulation was incorrect and has been corrected in the tracking files.
 - Payby now uses `Network.SHELBYNET` for transaction construction and performs a live chain-ID preflight before upload and registry retry. A mismatch stops the flow before opening Petra.
 - The remaining gate is external: Petra must be updated or configured with a wallet network profile that reports Shelbynet chain ID `118`, then the funded end-to-end publish must be retried.
+
+## Continued 12 August 2026 - Repository Documentation Refresh
+
+- README is now written as an implementation and review document rather than a feature list: it explains the product model, canonical data boundaries, Shelby/Aptos integration, route map, Move surface, setup, deployment, security, and release gates.
+- The documentation distinguishes verified implementation from unverified wallet E2E and Early Access work, and preserves the landing-page boundary.
