@@ -1,0 +1,678 @@
+/* Stable interaction states.
+   Legacy theme and panel hover rules use higher specificity, so these product
+   states are intentionally explicit. */
+:root[data-theme="light"] .app-shell .sidebar {
+  --ws-text: var(--ws-sidebar-text);
+  --ws-muted: var(--ws-sidebar-muted);
+  --ws-faint: var(--ws-sidebar-faint);
+  --ws-line: var(--ws-sidebar-line);
+  --ws-line-strong: var(--ws-sidebar-line-strong);
+  --ws-surface: var(--ws-sidebar-bg);
+  --ws-surface-2: var(--ws-sidebar-active);
+  --ws-hover: var(--ws-sidebar-active);
+  --ws-accent: var(--ws-sidebar-accent);
+  border-right-color: var(--ws-sidebar-line);
+  background: var(--ws-sidebar-bg);
+  color: var(--ws-sidebar-text);
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .app-shell .sidebar-brand,
+:root[data-theme="light"] .app-shell .sidebar-brand:hover,
+:root[data-theme="light"] .app-shell .sidebar-brand:focus-visible {
+  border: 1px solid var(--ws-sidebar-line);
+  border-radius: 6px;
+  background: #151511;
+  color: var(--ws-sidebar-text);
+  padding: 0 12px;
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .app-shell .sidebar-brand:hover {
+  border-color: var(--ws-sidebar-line-strong);
+  background: var(--ws-sidebar-active);
+}
+
+:root[data-theme="light"] .app-shell .sidebar-brand .payby-logo-word,
+:root[data-theme="light"] .app-shell .sidebar-note strong {
+  color: var(--ws-sidebar-text);
+}
+
+:root[data-theme="light"] .app-shell .sidebar-identity > span,
+:root[data-theme="light"] .app-shell .side-nav-label,
+:root[data-theme="light"] .app-shell .sidebar-note span {
+  color: var(--ws-sidebar-faint);
+}
+
+:root[data-theme="light"] .app-shell .side-link {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ws-sidebar-muted);
+}
+
+:root[data-theme="light"] .app-shell .side-link:hover,
+:root[data-theme="light"] .app-shell .side-link:focus-visible {
+  border-color: var(--ws-sidebar-line);
+  background: #171713;
+  color: var(--ws-sidebar-text);
+}
+
+:root[data-theme="light"] .app-shell .side-link.is-active,
+:root[data-theme="light"] .app-shell .side-link.is-active:hover,
+:root[data-theme="light"] .app-shell .side-link.is-active:focus-visible {
+  border-color: var(--ws-sidebar-line-strong);
+  background: var(--ws-sidebar-active);
+  color: var(--ws-sidebar-text);
+  box-shadow: inset 2px 0 0 var(--ws-sidebar-accent);
+}
+
+:root[data-theme="light"] .app-shell .side-link svg {
+  color: var(--ws-sidebar-faint);
+}
+
+:root[data-theme="light"] .app-shell .side-link.is-active svg {
+  color: var(--ws-sidebar-accent);
+}
+
+:root[data-theme="light"] .app-shell :is(
+    .vault-panel,
+    .analytics-panel,
+    .buyer-library-panel,
+    .discover-panel,
+    .network-panel,
+    .activity-panel
+  ),
+:root[data-theme="light"] .app-shell :is(
+    .vault-panel,
+    .analytics-panel,
+    .buyer-library-panel,
+    .discover-panel,
+    .network-panel,
+    .activity-panel
+  ):hover {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+:root[data-theme="light"] .app-shell .button-primary,
+:root[data-theme="light"] .app-shell .button-primary:visited {
+  border-color: #11130f;
+  background: #11130f;
+  color: #f9f9f0;
+}
+
+:root[data-theme="light"] .app-shell .button-primary:hover,
+:root[data-theme="light"] .app-shell .button-primary:focus-visible {
+  border-color: #292d27;
+  background: #292d27;
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .app-shell :is(
+    .button-secondary,
+    .button-ghost,
+    .icon-button,
+    .network-trigger,
+    .wallet-pill
+  ) {
+  border-color: var(--ws-line-strong);
+  background: #ffffff;
+  color: var(--ws-text);
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .app-shell :is(
+    .button-secondary,
+    .button-ghost,
+    .icon-button,
+    .network-trigger,
+    .wallet-pill
+  ):hover {
+  border-color: #11130f;
+  background: #e9ece7;
+  color: #11130f;
+}
+
+.app-shell :is(.button, .icon-button, .network-trigger, .wallet-pill):disabled,
+.app-shell .button.is-busy {
+  border-color: var(--ws-line);
+  background: var(--ws-surface-2);
+  color: var(--ws-faint);
+  opacity: 0.72;
+  box-shadow: none;
+  transform: none;
+}
+
+:root[data-theme="light"] .app-shell :is(
+    .button,
+    .icon-button,
+    .network-trigger,
+    .wallet-pill
+  ):disabled,
+:root[data-theme="light"] .app-shell .button.is-busy {
+  border-color: rgb(20 24 20 / 0.16);
+  background: #e4e7e2;
+  color: #666d65;
+  opacity: 1;
+}
+
+.app-shell .workspace-page .publish-panel,
+.app-shell .workspace-page .publish-panel:hover,
+.app-shell .workspace-page .publish-panel:focus-within,
+.app-shell .workspace-page .profile-panel,
+.app-shell .workspace-page .profile-panel:hover,
+.app-shell .workspace-page .profile-panel:focus-within {
+  border: 1px solid var(--ws-line);
+  border-radius: 6px;
+  background: var(--ws-surface);
+  padding: clamp(22px, 2vw, 30px);
+  box-shadow: none;
+  transform: none;
+}
+
+.app-shell .workspace-page .profile-card-final,
+.app-shell .workspace-page .profile-card-final:hover,
+.app-shell .workspace-page .profile-card-final:focus-within {
+  border: 1px solid var(--ws-line);
+  border-radius: 6px;
+  background: var(--ws-surface);
+  padding: clamp(24px, 2.25vw, 34px);
+  box-shadow: none;
+  transform: none;
+}
+
+.app-shell .route-unavailable {
+  display: grid;
+  max-width: 720px;
+  gap: 12px;
+  margin: clamp(24px, 6vw, 72px) auto;
+  padding: clamp(24px, 4vw, 48px);
+}
+
+.app-shell .route-unavailable-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--ws-line-strong);
+  border-radius: 50%;
+  color: var(--ws-accent);
+}
+
+.app-shell .route-unavailable h2 {
+  max-width: 560px;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.12;
+}
+
+.app-shell .route-unavailable p:not(.eyebrow) {
+  max-width: 620px;
+  color: var(--ws-muted);
+}
+
+.app-shell .route-unavailable .button {
+  width: fit-content;
+  margin-top: 8px;
+}
+
+.app-shell .search-box:focus-within {
+  border-color: var(--ws-line-strong);
+  background: var(--ws-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ws-line-strong);
+}
+
+.app-shell .search-box input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.app-shell .vault-publish-button {
+  gap: 8px;
+}
+
+.app-shell .vault-publish-button svg {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: currentColor;
+  padding: 0;
+  box-shadow: none;
+  stroke-width: 2;
+}
+
+@media (min-width: 961px) {
+  .app-shell .activity-panel,
+  .app-shell .network-panel,
+  .app-shell .vault-panel {
+    gap: 18px;
+  }
+
+  .app-shell .proof-summary > div {
+    min-height: 74px;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 2px 8px;
+    padding: 12px 15px;
+  }
+
+  .app-shell .proof-summary svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-shell .proof-summary span {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .app-shell .proof-summary strong {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .app-shell .network-route-card {
+    min-height: 108px;
+    grid-template-columns: minmax(300px, 1fr) 182px;
+    gap: 20px;
+    padding: 17px 20px;
+  }
+
+  .app-shell .network-route-card > div:first-child {
+    gap: 3px;
+  }
+
+  .app-shell .network-route-card > div:first-child > span {
+    font-size: 9px;
+  }
+
+  .app-shell .network-route-card > div:first-child > strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .app-shell .network-route-card p {
+    max-width: 64ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .network-route-meta {
+    min-width: 0;
+    gap: 3px;
+    padding-left: 18px;
+  }
+
+  .app-shell .network-route-meta > span {
+    min-height: 23px;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .app-shell .network-route-meta svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .app-shell .funding-helper {
+    min-height: 78px;
+    gap: 18px;
+    padding: 12px 15px;
+  }
+
+  .app-shell .funding-helper > div {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 1px 9px;
+  }
+
+  .app-shell .funding-helper svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-shell .funding-helper span {
+    font-size: 9px;
+  }
+
+  .app-shell .funding-helper strong {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .app-shell .funding-helper p {
+    max-width: 68ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .funding-helper .button {
+    min-height: 40px;
+    padding-inline: 13px;
+    font-size: 13px;
+  }
+
+  .app-shell .profile-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+  }
+
+  .app-shell .workspace-page .profile-card-final,
+  .app-shell .workspace-page .profile-card-final:hover,
+  .app-shell .workspace-page .profile-card-final:focus-within {
+    gap: 16px;
+    padding: 23px 24px;
+  }
+
+  .app-shell .profile-card-final .profile-preview-top {
+    gap: 16px;
+  }
+
+  .app-shell .profile-card-final .avatar-preview {
+    width: 72px;
+    height: 72px;
+  }
+
+  .app-shell .profile-card-final .profile-identity {
+    gap: 3px;
+  }
+
+  .app-shell .profile-card-final .profile-identity > strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .app-shell .profile-card-final .profile-identity > p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .app-shell .profile-card-final .verified-pill {
+    min-height: 0;
+    padding: 7px 10px;
+  }
+
+  .app-shell .profile-card-final .profile-stats > div {
+    min-height: 56px;
+    gap: 3px;
+    padding: 10px 12px;
+  }
+
+  .app-shell .profile-card-final .profile-stats span {
+    font-size: 9px;
+  }
+
+  .app-shell .profile-card-final .profile-stats strong {
+    font-size: 14px;
+  }
+
+  .app-shell .profile-actions-panel {
+    gap: 13px;
+    padding: 18px;
+  }
+
+  .app-shell .profile-actions-panel h3 {
+    font-size: 18px;
+  }
+
+  .app-shell .profile-actions-panel .button {
+    min-height: 42px;
+    padding-inline: 13px;
+    font-size: 13px;
+  }
+
+  .app-shell .library-source-banner {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 11px 14px;
+  }
+
+  .app-shell .library-source-banner > svg {
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+  }
+
+  .app-shell .library-source-banner strong {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .app-shell .library-source-banner p {
+    max-width: 72ch;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .app-shell .library-source-banner > .button {
+    min-height: 40px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 960px) {
+  :root[data-theme="light"] .app-shell .sidebar {
+    border-right: 0;
+    border-bottom-color: var(--ws-sidebar-line);
+    background: var(--ws-sidebar-bg);
+  }
+}
+
+/* Keep compact information blocks tied to their content. The legacy page
+   minimum height must not stretch their grid rows into empty panels. */
+.app-shell .workspace-page > .panel {
+  align-content: start;
+}
+
+.app-shell .library-source-banner,
+.app-shell .funding-helper,
+.app-shell .network-route-card {
+  align-self: start;
+}
+
+.app-shell .library-source-banner {
+  align-items: start;
+}
+
+.app-shell .library-source-banner > svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 3px;
+}
+
+.app-shell .library-source-banner > div:not(.discovery-creator-actions),
+.app-shell .funding-helper > div,
+.app-shell .network-route-card > div:first-child {
+  min-width: 0;
+}
+
+.app-shell .library-source-banner > div:not(.discovery-creator-actions) {
+  gap: 4px;
+}
+
+.app-shell .library-source-banner strong,
+.app-shell .funding-helper strong {
+  font-family: var(--foundation-font-interface);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.app-shell .library-source-banner p,
+.app-shell .funding-helper p,
+.app-shell .network-route-card p {
+  max-width: 66ch;
+  font-family: var(--foundation-font-interface);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.app-shell .library-source-banner > .button {
+  align-self: center;
+}
+
+.app-shell .funding-helper {
+  align-items: start;
+}
+
+.app-shell .funding-helper > div {
+  row-gap: 3px;
+}
+
+.app-shell .funding-helper svg {
+  margin-top: 2px;
+}
+
+.app-shell .funding-helper span,
+.app-shell .network-route-card > div:first-child > span {
+  font-family: var(--foundation-font-interface);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.app-shell .funding-helper .button {
+  align-self: center;
+}
+
+.app-shell .network-route-card {
+  align-items: center;
+}
+
+.app-shell .network-route-card > div:first-child {
+  gap: 4px;
+}
+
+.app-shell .network-route-card > div:first-child > strong {
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.app-shell .activity-sync-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--foundation-space-4);
+  min-height: 48px;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  background: var(--ws-surface);
+  padding: 8px 10px 8px 14px;
+}
+
+.app-shell .activity-sync-status > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ws-muted);
+  font-size: var(--foundation-type-xs);
+  line-height: 1.45;
+}
+
+.app-shell .activity-sync-status > div > svg {
+  flex: 0 0 auto;
+  color: var(--ws-positive);
+}
+
+.app-shell .activity-sync-status > div > span {
+  max-width: 76ch;
+}
+
+.app-shell .activity-sync-status > .button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: var(--foundation-type-xs);
+}
+
+.app-shell .activity-sync-status > .button:disabled {
+  cursor: wait;
+}
+
+/* Keep workspace grids shrinkable at handset widths. These guards prevent
+   fixed controls and flex/grid min-content sizes from creating a second
+   horizontal canvas on profile and publish routes. */
+.app-shell .topbar,
+.app-shell .topbar-actions,
+.app-shell .route-title-block,
+.app-shell .workspace-page,
+.app-shell .workspace-layout,
+.app-shell .panel-header > div:first-child,
+.app-shell .publish-layout,
+.app-shell .publish-panel,
+.app-shell .profile-layout,
+.app-shell .profile-panel,
+.app-shell .profile-card-final,
+.app-shell .metadata-form,
+.app-shell .avatar-picker-field,
+.app-shell .network-switch,
+.app-shell .wallet-menu {
+  min-width: 0;
+}
+
+.app-shell .is-verification-checking .tx-status-pill i {
+  background: var(--ws-muted);
+}
+
+.app-shell .is-verification-unavailable .tx-status-pill {
+  color: var(--ws-muted);
+  border-color: var(--ws-line);
+  background: var(--ws-surface-2);
+}
+
+.app-shell .is-verification-unavailable .tx-status-pill i {
+  background: var(--ws-muted);
+}
+
+@media (max-width: 760px) {
+  .app-shell .sidebar {
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--foundation-space-3);
+    overflow: visible;
+  }
+
+  .app-shell .side-nav {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .app-shell .side-link {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .app-shell .topbar-actions > *,
+  .app-shell .network-switch,
+  .app-shell .network-trigger,
+  .app-shell .wallet-menu,
+  .app-shell .wallet-pill {
+    min-width: 0;
+  }
+
+  .app-shell .network-trigger,
+  .app-shell .wallet-pill {
+    width: 100%;
+  }
+
+  .app-shell .activity-sync-status {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-shell .activity-sync-status > .button {
+    align-self: flex-start;
+  }
+}

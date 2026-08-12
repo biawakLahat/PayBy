@@ -14,7 +14,11 @@ function getNetworks() {
       label: "Shelbynet",
       fullnode:
         env("PAYBY_SHELBYNET_FULLNODE_URL") ||
-        "https://api.shelbynet.aptoslabs.com/v1",
+        "https://api.shelbynet.shelby.xyz/v1",
+      apiKey:
+        env("PAYBY_APTOS_SHELBYNET_API_KEY") ||
+        env("VITE_APTOS_SHELBYNET_API_KEY") ||
+        env("VITE_SHELBYNET_API_KEY"),
       contract:
         env("PAYBY_SHELBYNET_MARKETPLACE_ADDRESS") ||
         env("VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS"),
@@ -27,6 +31,10 @@ function getNetworks() {
       fullnode:
         env("PAYBY_TESTNET_FULLNODE_URL") ||
         "https://api.testnet.aptoslabs.com/v1",
+      apiKey:
+        env("PAYBY_APTOS_TESTNET_API_KEY") ||
+        env("VITE_APTOS_TESTNET_API_KEY") ||
+        env("VITE_SHELBY_TESTNET_API_KEY"),
       contract:
         env("PAYBY_TESTNET_MARKETPLACE_ADDRESS") ||
         env("VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS"),
@@ -59,10 +67,12 @@ function status(ok, label, detail) {
   return ok;
 }
 
-async function callView({ fullnode, contract, functionName, args = [] }) {
+async function callView({ fullnode, apiKey, contract, functionName, args = [] }) {
+  const headers = { "content-type": "application/json" };
+  if (apiKey) headers.authorization = `Bearer ${apiKey}`;
   const response = await fetch(`${fullnode.replace(/\/$/, "")}/view`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify({
       function: `${contract}::payby_marketplace::${functionName}`,
       type_arguments: [],
@@ -71,7 +81,8 @@ async function callView({ fullnode, contract, functionName, args = [] }) {
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    const body = (await response.text()).replace(/\s+/g, " ").slice(0, 160);
+    throw new Error(`HTTP ${response.status}${body ? ` - ${body}` : ""}`);
   }
 
   return response.json();
@@ -117,6 +128,7 @@ async function checkNetwork([key, network]) {
     try {
       await callView({
         fullnode: network.fullnode,
+        apiKey: network.apiKey,
         contract: network.contract,
         functionName,
         args,

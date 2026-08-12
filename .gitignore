@@ -11,3 +11,5 @@ logs/
 server/data/access-policies.json
 server/data/media-metadata.json
 contracts/**/build/
+
+.vercel

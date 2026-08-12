@@ -173,7 +173,7 @@ VITE_SHELBYNET_API_KEY=
 VITE_SHELBY_TESTNET_API_KEY=
 VITE_APTOS_SHELBYNET_API_KEY=
 VITE_APTOS_TESTNET_API_KEY=
-VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=
+VITE_PAYBY_SHELBYNET_MARKETPLACE_ADDRESS=0x962ebbcf81cbc5dc0950a8ca036d54828481043f1df8960a2ec4d50fae8c3a12
 VITE_PAYBY_TESTNET_MARKETPLACE_ADDRESS=
 VITE_PAYBY_PAYMENT_ASSET_METADATA=
 VITE_PAYBY_APT_PAYMENT_ASSET_METADATA=
@@ -228,10 +228,21 @@ The helper script publishes and initializes the Payby registry package.
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-payby-marketplace.ps1 `
   -Network shelbynet `
-  -Profile payby-testnet `
+  -Profile payby-shelbynet `
+  -UpdateEnv
+```
+
+The profile must be a dedicated Payby signer that is visible in `aptos config show-profiles`. A testnet profile is not a Shelbynet deployer, and profiles from other projects must never be reused. If the signer is intentionally kept outside the Aptos CLI profile store, pass a local key file and the explicit package address instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-payby-marketplace.ps1 `
+  -Network shelbynet `
+  -PrivateKeyFile C:\secure\payby-shelbynet.key `
   -Address 0x... `
   -UpdateEnv
 ```
+
+The key file must remain outside Git and must never be pasted into chat. Local signer deployments use the Aptos TypeScript SDK path because it supports the direct Shelbynet fullnode transport reliably; profile deployments continue through the Aptos CLI.
 
 For Shelby Testnet:
 
@@ -239,7 +250,6 @@ For Shelby Testnet:
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-payby-marketplace.ps1 `
   -Network testnet `
   -Profile payby-testnet `
-  -Address 0x... `
   -UpdateEnv
 ```
 
@@ -305,6 +315,6 @@ Before inviting external users:
 
 ## Current Status
 
-Payby is ready for real Shelbynet end-to-end testing with the owner-scoped Move registry, paid unlock transfer flow, buyer purchase index, creator revenue summary, listing-level sales, and on-chain creator profile registry deployed and integrated.
+The Payby marketplace package is deployed and initialized on Shelbynet at `0x962ebbcf81cbc5dc0950a8ca036d54828481043f1df8960a2ec4d50fae8c3a12`. The publish transaction and registry initialization are finalized, and `npm.cmd run check:readiness` passes for both Shelbynet and Shelby Testnet view routes.
 
-Remaining production-hardening work is focused on multi-wallet E2E testing, Shelby Testnet validation through Early Access, contract review, and a future hardened retrieval service if strict server-enforced media gating is required.
+The application is not yet marked community-ready because real creator and buyer wallet E2E is still required: Shelby upload/retrieval, paid unlock, receipt recovery, post-wipe behavior, browser accessibility, and Early Access validation on Shelby Testnet. The deployment was made with a dedicated Payby signer; accounts from other projects were not used.

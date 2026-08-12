@@ -1,0 +1,669 @@
+
+.app-shell {
+  --ws-sidebar-width: 236px;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--ws-sidebar-width) minmax(0, 1fr);
+  background: var(--ws-bg);
+  color: var(--ws-text);
+  font-family: var(--foundation-font-interface);
+  font-size: var(--foundation-type-sm);
+  line-height: 1.5;
+}
+
+.app-shell *,
+.app-shell *::before,
+.app-shell *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.app-shell button,
+.app-shell input,
+.app-shell textarea,
+.app-shell select {
+  font-family: inherit;
+}
+
+.app-shell p,
+.app-shell h1,
+.app-shell h2,
+.app-shell h3,
+.app-shell h4,
+.app-shell dl,
+.app-shell dd {
+  margin: 0;
+}
+
+.app-shell p,
+.app-shell span,
+.app-shell strong,
+.app-shell small,
+.app-shell code {
+  min-width: 0;
+}
+
+.app-shell .sidebar {
+  width: var(--ws-sidebar-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden auto;
+  border: 0;
+  border-right: 1px solid var(--ws-line);
+  background: var(--ws-sidebar);
+  padding: 24px 16px 18px;
+  box-shadow: none;
+}
+
+.app-shell .sidebar::after,
+.app-shell .panel::before,
+.app-shell .panel::after,
+.app-shell .button::before,
+.app-shell .button::after,
+.app-shell .dropzone::before,
+.app-shell .profile-card-preview::before,
+.app-shell .endpoint::before {
+  display: none;
+}
+
+.app-shell .sidebar-identity {
+  display: grid;
+  gap: 7px;
+  padding: 0 8px 22px;
+  border-bottom: 1px solid var(--ws-line);
+}
+
+.app-shell .sidebar-identity > span {
+  color: var(--ws-faint);
+  font-size: 0.675rem;
+  font-weight: 600;
+}
+
+.app-shell .sidebar-brand,
+:root[data-theme="light"] .app-shell .sidebar-brand {
+  width: fit-content;
+  min-height: 32px;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.app-shell .sidebar-brand:hover,
+:root[data-theme="light"] .app-shell .sidebar-brand:hover {
+  transform: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell .sidebar-brand .payby-logo-mark {
+  width: 27px;
+  height: 27px;
+  border-color: var(--ws-line-strong);
+  background: var(--ws-surface);
+  box-shadow: none;
+}
+
+.app-shell .sidebar-brand .payby-logo-word {
+  color: var(--ws-text);
+  font-size: 0.875rem;
+  font-weight: 750;
+}
+
+.app-shell .side-nav {
+  display: grid;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  padding: 16px 0 0;
+  box-shadow: none;
+}
+
+.app-shell .side-nav-label {
+  margin: 20px 12px 6px;
+  color: var(--ws-faint);
+  font-size: 0.595rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.app-shell .side-nav-label:first-child {
+  margin-top: 0;
+}
+
+.app-shell .side-link {
+  min-height: 40px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-muted);
+  padding: 0 12px;
+  font-size: 0.79rem;
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 transparent;
+  transition:
+    color 150ms var(--ease-out-quint),
+    background 150ms var(--ease-out-quint),
+    box-shadow 150ms var(--ease-out-quint);
+}
+
+.app-shell .side-link::after {
+  display: none;
+}
+
+.app-shell .side-link:hover {
+  transform: none;
+  background: color-mix(in oklch, var(--ws-surface) 76%, transparent);
+  color: var(--ws-text);
+  box-shadow: inset 2px 0 0 var(--ws-line-strong);
+}
+
+.app-shell .side-link.is-active {
+  background: var(--ws-surface);
+  color: var(--ws-text);
+  box-shadow: inset 2px 0 0 var(--ws-accent);
+}
+
+.app-shell .side-link svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  opacity: 0.8;
+}
+
+.app-shell .side-link.is-active svg {
+  color: var(--ws-accent);
+  opacity: 1;
+}
+
+.app-shell .sidebar-note {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 0;
+  border-top: 1px solid var(--ws-line);
+  background: transparent;
+  padding: 17px 10px 2px;
+  color: var(--ws-positive);
+}
+
+.app-shell .sidebar-note div {
+  display: grid;
+  gap: 2px;
+}
+
+.app-shell .sidebar-note strong {
+  overflow: hidden;
+  color: var(--ws-text);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .sidebar-note span {
+  color: var(--ws-faint);
+  font-size: 0.655rem;
+  line-height: 1.35;
+}
+
+.app-shell .workspace {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 0;
+  padding: 0;
+  background: var(--ws-bg);
+}
+
+.app-shell .topbar {
+  min-height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 0;
+  border-bottom: 1px solid var(--ws-line);
+  background: color-mix(in oklch, var(--ws-bg) 96%, transparent);
+  margin: 0;
+  padding: 0 clamp(24px, 3vw, 48px);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.app-shell .topbar::after {
+  display: none;
+}
+
+.app-shell .route-title-block {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-shell .route-title-block .muted {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ws-faint);
+  font-size: 0.69rem;
+  font-weight: 650;
+}
+
+.app-shell .route-title-block .muted::after {
+  content: "/";
+  color: var(--ws-line-strong);
+}
+
+.app-shell .topbar h1 {
+  overflow: hidden;
+  color: var(--ws-muted);
+  font-size: 0.69rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .topbar-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.app-shell .workspace-page {
+  width: min(100%, 1512px);
+  margin: 0 auto;
+  padding: 40px clamp(24px, 3vw, 48px) 80px;
+  animation: workspace-page-in 300ms var(--ease-out-quint) both;
+}
+
+@keyframes workspace-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-shell .workspace-layout {
+  width: 100%;
+  display: grid;
+  align-items: start;
+  gap: 40px;
+}
+
+.app-shell .panel,
+.app-shell .panel:hover {
+  position: relative;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.app-shell .panel-header {
+  min-height: 100px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border: 0;
+  border-bottom: 1px solid var(--ws-line);
+  background: transparent;
+  margin: 0;
+  padding: 0 0 28px;
+}
+
+.app-shell .panel-header > div:first-child {
+  max-width: 700px;
+  display: grid;
+  gap: 7px;
+}
+
+.app-shell .panel-header .muted {
+  color: var(--ws-accent);
+  font-size: 0.665rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.app-shell .panel h2 {
+  color: var(--ws-text);
+  font-size: clamp(1.75rem, 2.35vw, 2.25rem);
+  font-weight: 730;
+  line-height: 1.08;
+}
+
+.app-shell .hero-panel-header > div > span {
+  max-width: 620px;
+  color: var(--ws-muted);
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.app-shell .panel-header > svg {
+  width: 21px;
+  height: 21px;
+  margin-top: 4px;
+  color: var(--ws-accent);
+  opacity: 0.9;
+}
+
+.app-shell .button,
+.app-shell .network-trigger,
+.app-shell .wallet-pill,
+.app-shell .icon-button {
+  min-height: 40px;
+  border: 1px solid var(--ws-line-strong);
+  border-radius: 5px;
+  background: var(--ws-surface);
+  color: var(--ws-text);
+  box-shadow: none;
+  transition:
+    border-color 150ms var(--ease-out-quint),
+    background 150ms var(--ease-out-quint),
+    color 150ms var(--ease-out-quint),
+    transform 150ms var(--ease-out-quint);
+}
+
+.app-shell .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  font-size: 0.735rem;
+  font-weight: 680;
+}
+
+.app-shell .button:hover,
+.app-shell .network-trigger:hover,
+.app-shell .wallet-pill:hover,
+.app-shell .icon-button:hover {
+  border-color: color-mix(in oklch, var(--ws-accent) 48%, var(--ws-line-strong));
+  background: var(--ws-hover);
+  color: var(--ws-text);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.app-shell .button:active,
+.app-shell .network-trigger:active,
+.app-shell .wallet-pill:active,
+.app-shell .icon-button:active {
+  transform: translateY(0);
+}
+
+.app-shell .button:focus-visible,
+.app-shell .network-trigger:focus-visible,
+.app-shell .wallet-pill:focus-visible,
+.app-shell .icon-button:focus-visible,
+.app-shell input:focus-visible,
+.app-shell textarea:focus-visible,
+.app-shell select:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+}
+
+.app-shell .button-primary,
+:root[data-theme="light"] .app-shell .button-primary {
+  border-color: var(--ws-accent);
+  background: var(--ws-accent);
+  color: var(--ws-accent-ink);
+}
+
+.app-shell .button-primary:hover,
+:root[data-theme="light"] .app-shell .button-primary:hover {
+  border-color: color-mix(in oklch, var(--ws-accent) 82%, white);
+  background: color-mix(in oklch, var(--ws-accent) 88%, white);
+  color: var(--ws-accent-ink);
+}
+
+.app-shell .button-secondary,
+.app-shell .button-ghost {
+  border-color: var(--ws-line);
+  background: var(--ws-surface);
+  color: var(--ws-text);
+}
+
+.app-shell .compact-button {
+  min-height: 36px;
+  padding-inline: 12px;
+  font-size: 0.7rem;
+}
+
+.app-shell .icon-button {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.app-shell .icon-button svg,
+.app-shell .button svg {
+  flex: 0 0 auto;
+}
+
+.app-shell .danger-button,
+.app-shell .danger-action {
+  color: var(--ws-danger);
+}
+
+.app-shell .danger-action {
+  border-color: color-mix(in oklch, var(--ws-danger) 48%, var(--ws-line));
+  background: transparent;
+}
+
+.app-shell .network-switch,
+.app-shell .wallet-menu {
+  position: relative;
+}
+
+.app-shell .network-trigger {
+  width: 188px;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 27px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 10px;
+}
+
+.app-shell .network-trigger-icon {
+  width: 27px;
+  height: 27px;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--ws-line);
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell .network-trigger-icon::after {
+  display: none;
+}
+
+.app-shell .network-trigger-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.app-shell .network-trigger-copy {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.app-shell .network-trigger-copy strong {
+  color: var(--ws-text);
+  font-size: 0.72rem;
+  font-weight: 680;
+}
+
+.app-shell .network-trigger-copy small {
+  color: var(--ws-faint);
+  font-size: 0.61rem;
+}
+
+.app-shell .network-trigger > svg:last-child {
+  color: var(--ws-muted);
+  transition: transform 160ms var(--ease-out-quint);
+}
+
+.app-shell .network-trigger.is-open > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.app-shell .network-menu,
+.app-shell .wallet-list {
+  min-width: 260px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  overflow: hidden;
+  border: 1px solid var(--ws-line-strong);
+  border-radius: 6px;
+  background: var(--ws-surface);
+  padding: 6px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.28);
+  animation: workspace-menu-in 150ms var(--ease-out-quint) both;
+}
+
+@keyframes workspace-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.app-shell .network-option,
+.app-shell .wallet-list > button {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-text);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.app-shell .network-option:hover,
+.app-shell .wallet-list > button:hover {
+  background: var(--ws-hover);
+}
+
+.app-shell .network-option span,
+.app-shell .wallet-list > button span {
+  display: grid;
+  gap: 2px;
+}
+
+.app-shell .network-option strong,
+.app-shell .wallet-list > button strong {
+  font-size: 0.75rem;
+}
+
+.app-shell .network-option small,
+.app-shell .wallet-list > button small {
+  color: var(--ws-muted);
+  font-size: 0.655rem;
+}
+
+.app-shell .network-option.is-active svg {
+  color: var(--ws-positive);
+}
+
+.app-shell .wallet-pill {
+  min-width: 176px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  font-size: 0.67rem;
+}
+
+.app-shell .wallet-pill > span:nth-child(2) {
+  overflow: hidden;
+  color: var(--ws-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .wallet-pill strong {
+  margin-left: auto;
+  color: var(--ws-text);
+  font-size: 0.665rem;
+}
+
+.app-shell .wallet-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ws-positive);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ws-positive) 14%, transparent);
+}
+
+.app-shell .wallet-list-header {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border-bottom: 1px solid var(--ws-line);
+}
+
+.app-shell .wallet-list-header strong {
+  font-size: 0.77rem;
+}
+
+.app-shell .wallet-list-header span,
+.app-shell .wallet-list > p {
+  color: var(--ws-muted);
+  font-size: 0.65rem;
+}
+
+.app-shell .wallet-list img {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+}
+

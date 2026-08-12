@@ -1,0 +1,85 @@
+/* Payby workspace and public-surface tokens.
+   Landing tokens remain owned by landing.css. */
+
+.app-shell,
+.public-page {
+  --foundation-font-primary: "Season Serif-4de1940e3ab1f834", "Source Serif 4", Georgia, serif;
+  --foundation-font-interface: Arial, Helvetica, sans-serif;
+  --foundation-type-xs: 0.688rem;
+  --foundation-type-sm: 1rem;
+  --foundation-type-md: 1.125rem;
+  --foundation-type-lg: 1.5rem;
+  --foundation-type-xl: 3.438rem;
+  --foundation-type-2xl: 5.625rem;
+  --foundation-type-3xl: 7.5rem;
+  --foundation-space-1: 5px;
+  --foundation-space-2: 10px;
+  --foundation-space-3: 15px;
+  --foundation-space-4: 20px;
+  --foundation-space-5: 30px;
+  --foundation-space-6: 45px;
+  --foundation-space-7: 50px;
+  --foundation-space-8: 62.45px;
+  --foundation-radius-pill: 33554400px;
+  --foundation-radius-surface: 2px;
+  --foundation-motion-instant: 150ms;
+  --foundation-color-text-primary: #f9f9f0;
+  --foundation-color-text-tertiary: oklab(0.979653 -0.0033434 0.0113728 / 0.5);
+  --foundation-color-surface-base: #000000;
+  --foundation-color-surface-muted: #0f0e0b;
+  --foundation-color-surface-raised: #21201c;
+  --foundation-color-brand: #d3b86b;
+  --foundation-color-success: #83c5b5;
+  --foundation-color-warning: #e0b76b;
+  --foundation-color-danger: #ef8379;
+  --foundation-color-shelby: #ee82c2;
+  --ws-bg: var(--foundation-color-surface-base);
+  --ws-sidebar: var(--foundation-color-surface-muted);
+  --ws-surface: var(--foundation-color-surface-muted);
+  --ws-surface-2: var(--foundation-color-surface-raised);
+  --ws-hover: color-mix(in oklab, var(--foundation-color-surface-raised) 82%, var(--foundation-color-text-primary));
+  --ws-line: color-mix(in oklab, var(--foundation-color-text-primary) 14%, transparent);
+  --ws-line-strong: color-mix(in oklab, var(--foundation-color-text-primary) 28%, transparent);
+  --ws-text: var(--foundation-color-text-primary);
+  --ws-muted: color-mix(in oklab, var(--foundation-color-text-primary) 68%, var(--foundation-color-surface-base));
+  --ws-faint: var(--foundation-color-text-tertiary);
+  --ws-action: var(--foundation-color-text-primary);
+  --ws-action-ink: var(--foundation-color-surface-base);
+  --ws-accent: var(--foundation-color-brand);
+  --ws-accent-ink: var(--foundation-color-surface-base);
+  --ws-positive: var(--foundation-color-success);
+  --ws-danger: var(--foundation-color-danger);
+  --ws-warning: var(--foundation-color-warning);
+  --ws-shelby: var(--foundation-color-shelby);
+  --ws-focus-ring: 0 0 0 3px color-mix(in oklab, var(--ws-accent) 34%, transparent);
+  --ws-shadow-raised: 0 18px 44px rgb(0 0 0 / 0.32);
+  --bg: var(--ws-bg);
+  --bg-elevated: var(--ws-surface);
+  --surface: var(--ws-surface-2);
+  --surface-strong: var(--ws-hover);
+  --text: var(--ws-text);
+  --muted: var(--ws-muted);
+  --line: var(--ws-line);
+  --accent: var(--ws-accent);
+  --accent-ink: var(--ws-accent-ink);
+  --success: var(--ws-positive);
+  --warning: var(--ws-warning);
+  --danger: var(--ws-danger);
+  --cool: var(--ws-positive);
+}
+
+:root[data-theme="light"] :is(.app-shell, .public-page) {
+  --foundation-color-text-primary: #0f0e0b;
+  --foundation-color-text-tertiary: oklab(0.183 0.003 0.012 / 0.58);
+  --foundation-color-surface-base: #f9f9f0;
+  --foundation-color-surface-muted: #f0efe6;
+  --foundation-color-surface-raised: #ffffff;
+  --foundation-color-brand: #71591f;
+  --foundation-color-success: #286f62;
+  --foundation-color-warning: #815c17;
+  --foundation-color-danger: #a33f38;
+  --foundation-color-shelby: #9d326f;
+  --ws-action: var(--foundation-color-text-primary);
+  --ws-action-ink: var(--foundation-color-surface-base);
+  --ws-shadow-raised: 0 18px 44px rgb(23 22 18 / 0.1);
+}

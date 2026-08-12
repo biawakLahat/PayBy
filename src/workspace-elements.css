@@ -1,0 +1,326 @@
+/* Shared content primitives */
+.app-shell .search-box {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ws-muted);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 13px;
+  box-shadow: none;
+}
+
+.app-shell .search-box input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ws-text);
+  padding: 0;
+  font-size: 0.79rem;
+}
+
+.app-shell .search-box input::placeholder,
+.app-shell input::placeholder,
+.app-shell textarea::placeholder {
+  color: color-mix(in oklch, var(--ws-muted) 68%, transparent);
+}
+
+.app-shell .metadata-form,
+.app-shell .access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+.app-shell .metadata-form label,
+.app-shell .access-grid label,
+.app-shell .allowlist-manager {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.app-shell .metadata-form label > span,
+.app-shell .access-grid label > span,
+.app-shell .allowlist-manager > span {
+  color: var(--ws-muted);
+  font-size: 0.675rem;
+  font-weight: 650;
+}
+
+.app-shell .form-wide {
+  grid-column: 1 / -1;
+}
+
+.app-shell .metadata-form input,
+.app-shell .metadata-form textarea,
+.app-shell .metadata-form select,
+.app-shell .access-grid input,
+.app-shell .access-grid textarea,
+.app-shell .access-grid select,
+.app-shell .allowlist-manager textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--ws-surface);
+  color: var(--ws-text);
+  padding: 10px 12px;
+  box-shadow: none;
+  font-size: 0.775rem;
+  transition:
+    border-color 150ms var(--ease-out-quint),
+    background 150ms var(--ease-out-quint);
+}
+
+.app-shell .metadata-form textarea,
+.app-shell .access-grid textarea,
+.app-shell .allowlist-manager textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.app-shell .metadata-form input:hover,
+.app-shell .metadata-form textarea:hover,
+.app-shell .metadata-form select:hover,
+.app-shell .access-grid input:hover,
+.app-shell .access-grid textarea:hover,
+.app-shell .access-grid select:hover {
+  border-color: var(--ws-line-strong);
+  background: var(--ws-surface-2);
+}
+
+.app-shell .metadata-form label:focus-within > span,
+.app-shell .access-grid label:focus-within > span {
+  color: var(--ws-accent);
+}
+
+.app-shell .dropzone {
+  min-height: 168px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px dashed var(--ws-line-strong);
+  border-radius: 6px;
+  background: var(--ws-surface);
+  color: var(--ws-muted);
+  padding: 28px;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease-out-quint),
+    background 160ms var(--ease-out-quint);
+}
+
+.app-shell .dropzone:hover,
+.app-shell .dropzone:focus-within {
+  border-color: var(--ws-accent);
+  background: var(--ws-surface-2);
+}
+
+.app-shell .dropzone input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.app-shell .drop-icon,
+.app-shell .empty-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ws-line-strong);
+  border-radius: 5px;
+  background: var(--ws-surface-2);
+  color: var(--ws-accent);
+}
+
+.app-shell .dropzone > strong {
+  color: var(--ws-text);
+  font-size: 0.84rem;
+  font-weight: 680;
+}
+
+.app-shell .dropzone > span:last-child {
+  color: var(--ws-muted);
+  font-size: 0.73rem;
+}
+
+.app-shell .form-section-heading {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  border-top: 1px solid var(--ws-line);
+  padding-top: 22px;
+}
+
+.app-shell .form-section-heading > span {
+  color: var(--ws-accent);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.app-shell .form-section-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.app-shell .form-section-heading strong {
+  color: var(--ws-text);
+  font-size: 0.82rem;
+}
+
+.app-shell .form-section-heading p {
+  color: var(--ws-muted);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.app-shell .inline-status {
+  width: fit-content;
+  max-width: 100%;
+  border-left: 2px solid var(--ws-warning);
+  background: color-mix(in oklch, var(--ws-warning) 7%, transparent);
+  color: var(--ws-muted);
+  padding: 10px 12px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.app-shell .library-source-banner,
+.app-shell .funding-helper,
+.app-shell .pending-publish-card {
+  border: 1px solid var(--ws-line);
+  border-radius: 6px;
+  background: var(--ws-surface);
+  box-shadow: none;
+}
+
+.app-shell .library-source-banner {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  color: var(--ws-positive);
+}
+
+.app-shell .library-source-banner > div:not(.discovery-creator-actions) {
+  display: grid;
+  gap: 3px;
+}
+
+.app-shell .library-source-banner strong {
+  color: var(--ws-text);
+  font-size: 0.74rem;
+}
+
+.app-shell .library-source-banner p {
+  max-width: 780px;
+  color: var(--ws-muted);
+  font-size: 0.69rem;
+  line-height: 1.5;
+}
+
+.app-shell .empty-state {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  border: 0;
+  border-top: 1px solid var(--ws-line);
+  border-bottom: 1px solid var(--ws-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ws-muted);
+  padding: 46px 24px;
+  box-shadow: none;
+}
+
+.app-shell .empty-state > strong {
+  color: var(--ws-text);
+  font-size: 0.85rem;
+}
+
+.app-shell .empty-state > p {
+  max-width: 440px;
+  color: var(--ws-muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.app-shell .empty-state.is-loading .empty-icon svg,
+.app-shell .button-spinner {
+  animation: workspace-spin 850ms linear infinite;
+}
+
+@keyframes workspace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-shell .skeleton-stack {
+  width: min(420px, 72vw);
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.app-shell .skeleton-stack span {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--ws-line);
+}
+
+.app-shell .skeleton-stack span:nth-child(2) {
+  width: 82%;
+}
+
+.app-shell .skeleton-stack span:nth-child(3) {
+  width: 62%;
+}
+
+.app-shell .pagination-bar {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--ws-line);
+  color: var(--ws-muted);
+  margin: 0;
+  padding-top: 14px;
+  font-size: 0.7rem;
+}
+
+.app-shell .pagination-bar > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-shell .pagination-bar > div > strong {
+  color: var(--ws-muted);
+  font-size: 0.67rem;
+  font-weight: 600;
+}
+
